@@ -34,7 +34,12 @@ fn arith_len(vm: &mut Vm, arg0: &Operand) -> VmResult<u32> {
 }
 
 /// C#: `OpMove` (move)
-pub(crate) fn op_move(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_move(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpMove: Invalid type");
     }
@@ -89,7 +94,12 @@ pub(crate) fn op_move(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpClear` (clear)
-pub(crate) fn op_clear(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_clear(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let Some(r) = arg0.reg() else {
         return internal("OpClear: Invalid type");
     };
@@ -107,7 +117,12 @@ pub(crate) fn op_clear(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpComp` (comp)
-pub(crate) fn op_comp(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_comp(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let len = arith_len(vm, arg0)?;
     let val0 = vm.op_value(arg0, len)?;
     let val1 = vm.op_value(arg1, len)?;
@@ -115,13 +130,19 @@ pub(crate) fn op_comp(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
     let diff = (val0 as u64).wrapping_sub(val1 as u64);
     let diff32 = diff as u32;
     vm.flags.update_flags(diff32, len);
-    vm.flags.set_overflow(val0, 0u32.wrapping_sub(val1), diff32, len);
+    vm.flags
+        .set_overflow(val0, 0u32.wrapping_sub(val1), diff32, len);
     vm.flags.set_carry(diff, len);
     Ok(())
 }
 
 /// C#: `OpSubb` (subb)
-pub(crate) fn op_subb(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_subb(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpSubb: Invalid type");
     }
@@ -133,13 +154,19 @@ pub(crate) fn op_subb(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
     let diff32 = diff as u32;
     vm.op_set_raw(arg0, Value::Int(diff32), 1)?;
     vm.flags.update_flags(diff32, len);
-    vm.flags.set_overflow(val0, 0u32.wrapping_sub(val1), diff32, len);
+    vm.flags
+        .set_overflow(val0, 0u32.wrapping_sub(val1), diff32, len);
     vm.flags.set_carry(diff, len);
     Ok(())
 }
 
 /// C#: `OpAdds` (adds)
-pub(crate) fn op_adds(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_adds(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpAdds: Invalid type");
     }
@@ -157,7 +184,12 @@ pub(crate) fn op_adds(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpMult` (mult)
-pub(crate) fn op_mult(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_mult(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpMult: Invalid type");
     }
@@ -183,7 +215,12 @@ pub(crate) fn op_mult(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpDivs` (divs)
-pub(crate) fn op_divs(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_divs(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpDivs: Invalid type");
     }
@@ -210,7 +247,12 @@ pub(crate) fn op_divs(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpAnd` (and)
-pub(crate) fn op_and(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_and(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpAnd: Invalid type");
     }
@@ -223,7 +265,12 @@ pub(crate) fn op_and(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Op
 }
 
 /// C#: `OpOr` (or)
-pub(crate) fn op_or(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_or(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpOr: Invalid type");
     }
@@ -236,7 +283,12 @@ pub(crate) fn op_or(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Ope
 }
 
 /// C#: `OpXor` (xor)
-pub(crate) fn op_xor(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xor(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpXor: Invalid type");
     }
@@ -249,7 +301,12 @@ pub(crate) fn op_xor(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Op
 }
 
 /// C#: `OpNot` (not)
-pub(crate) fn op_not(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_not(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpNot: Invalid type");
     }
@@ -264,19 +321,34 @@ pub(crate) fn op_not(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Op
 }
 
 /// C#: `OpClrc` (clrc)
-pub(crate) fn op_clrc(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_clrc(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     vm.flags.carry = false;
     Ok(())
 }
 
 /// C#: `OpSetc` (setc)
-pub(crate) fn op_setc(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_setc(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     vm.flags.carry = true;
     Ok(())
 }
 
 /// C#: `OpAsr` (asr)
-pub(crate) fn op_asr(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_asr(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpAsr: Invalid type");
     }
@@ -299,7 +371,11 @@ pub(crate) fn op_asr(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Op
 
         if shift as u32 >= bits {
             let sign_mask = 1u32 << (bits - 1);
-            value = if value & sign_mask != 0 { 0xFFFF_FFFF } else { 0 };
+            value = if value & sign_mask != 0 {
+                0xFFFF_FFFF
+            } else {
+                0
+            };
         } else {
             // C#: SByte / Int16 / Int32 arithmetic shift, widened back to uint.
             value = match len {
@@ -349,12 +425,22 @@ fn shift_left(vm: &mut Vm, arg0: &mut Operand, arg1: &mut Operand, name: &str) -
 }
 
 /// C#: `OpLsl` (lsl)
-pub(crate) fn op_lsl(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_lsl(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     shift_left(vm, arg0, arg1, "OpLsl")
 }
 
 /// C#: `OpLsr` (lsr)
-pub(crate) fn op_lsr(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_lsr(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpLsr: Invalid type");
     }
@@ -387,12 +473,22 @@ pub(crate) fn op_lsr(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Op
 }
 
 /// C#: `OpAsl` (asl)
-pub(crate) fn op_asl(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_asl(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     shift_left(vm, arg0, arg1, "OpAsl")
 }
 
 /// C#: `OpAddc` (addc)
-pub(crate) fn op_addc(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_addc(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpAddc: Invalid type");
     }
@@ -414,7 +510,12 @@ pub(crate) fn op_addc(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpSubc` (subc)
-pub(crate) fn op_subc(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_subc(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpSubc: Invalid type");
     }
@@ -430,19 +531,30 @@ pub(crate) fn op_subc(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
     let diff32 = diff as u32;
     vm.op_set_raw(arg0, Value::Int(diff32), 1)?;
     vm.flags.update_flags(diff32, len);
-    vm.flags.set_overflow(val0, 0u32.wrapping_sub(val1), diff32, len);
+    vm.flags
+        .set_overflow(val0, 0u32.wrapping_sub(val1), diff32, len);
     vm.flags.set_carry(diff, len);
     Ok(())
 }
 
 /// C#: `OpClrv` (clrv)
-pub(crate) fn op_clrv(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_clrv(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     vm.flags.overflow = false;
     Ok(())
 }
 
 /// C#: `OpTest` (test)
-pub(crate) fn op_test(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_test(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let len = arith_len(vm, arg0)?;
     let value = vm.op_value(arg0, len)? & vm.op_value(arg1, len)?;
     vm.flags.overflow = false;
@@ -526,7 +638,10 @@ mod tests {
         vm.flags.carry = true;
         vm.flags.zero = true;
         op_move(&mut vm, oc(), &mut a0, &mut a1).unwrap();
-        assert_eq!(vm.regs.string(Reg::S(0)).unwrap().get(false), b"xyz".to_vec());
+        assert_eq!(
+            vm.regs.string(Reg::S(0)).unwrap().get(false),
+            b"xyz".to_vec()
+        );
         assert!(!vm.flags.carry && !vm.flags.zero && !vm.flags.sign && !vm.flags.overflow);
     }
 
@@ -536,7 +651,10 @@ mod tests {
         vm.reg_set_array(Reg::S(0), b"abc", false).unwrap();
         let (mut a0, mut a1) = (Operand::idx(Reg::S(0), 1), Operand::imm8(0x5A));
         op_move(&mut vm, oc(), &mut a0, &mut a1).unwrap();
-        assert_eq!(vm.regs.string(Reg::S(0)).unwrap().get(false), b"aZc".to_vec());
+        assert_eq!(
+            vm.regs.string(Reg::S(0)).unwrap().get(false),
+            b"aZc".to_vec()
+        );
         assert!(!vm.flags.carry && !vm.flags.overflow);
     }
 
@@ -556,7 +674,13 @@ mod tests {
     fn clear_string_reg_empties_it() {
         let mut vm = vm();
         vm.reg_set_array(Reg::S(0), b"abc", false).unwrap();
-        op_clear(&mut vm, oc(), &mut Operand::r(Reg::S(0)), &mut Operand::none()).unwrap();
+        op_clear(
+            &mut vm,
+            oc(),
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::none(),
+        )
+        .unwrap();
         assert!(vm.regs.string(Reg::S(0)).unwrap().get(false).is_empty());
     }
 
@@ -587,7 +711,7 @@ mod tests {
         set_l(&mut vm, 1, 1);
         op_comp(&mut vm, oc(), &mut l(0), &mut l(1)).unwrap();
         assert!(vm.flags.overflow && !vm.flags.carry);
-        assert_eq!(vm.flags.sign, false);
+        assert!(!vm.flags.sign);
     }
 
     #[test]
@@ -719,7 +843,10 @@ mod tests {
         set_l(&mut vm, 0, 7);
         set_l(&mut vm, 1, 0);
         let r = op_divs(&mut vm, oc(), &mut l(0), &mut l(1));
-        assert!(matches!(r, Err(VmError::Raised(ErrorCode::EDIABAS_BIP_0007))));
+        assert!(matches!(
+            r,
+            Err(VmError::Raised(ErrorCode::EDIABAS_BIP_0007))
+        ));
     }
 
     #[test]
@@ -728,7 +855,10 @@ mod tests {
         set_l(&mut vm, 0, 0x8000_0000);
         set_l(&mut vm, 1, (-1i32) as u32);
         let r = op_divs(&mut vm, oc(), &mut l(0), &mut l(1));
-        assert!(matches!(r, Err(VmError::Raised(ErrorCode::EDIABAS_BIP_0007))));
+        assert!(matches!(
+            r,
+            Err(VmError::Raised(ErrorCode::EDIABAS_BIP_0007))
+        ));
     }
 
     #[test]
@@ -972,7 +1102,13 @@ mod float_move_tests {
         let mut vm = Vm::for_test();
         vm.regs.set_float(Reg::F(2), 140.5).unwrap();
         let f = |r| Operand::new(AddrMode::RegS, OpData::Reg(r), OpData::None, OpData::None);
-        op_move(&mut vm, &super::super::OPCODES[0], &mut f(Reg::F(0)), &mut f(Reg::F(2))).unwrap();
+        op_move(
+            &mut vm,
+            &super::super::OPCODES[0],
+            &mut f(Reg::F(0)),
+            &mut f(Reg::F(2)),
+        )
+        .unwrap();
         assert_eq!(vm.regs.float(Reg::F(0)).unwrap(), 140.5);
     }
 }

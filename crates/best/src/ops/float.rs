@@ -26,7 +26,12 @@ const EDIABAS_VERSION: u32 = 0x773;
 const IS_MIN_VERSION_760: bool = EDIABAS_VERSION >= 0x760;
 
 /// C#: `OpA2Flt` (a2flt)
-pub(crate) fn op_a2flt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_a2flt(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpA2flt: Invalid type");
     }
@@ -47,7 +52,12 @@ pub(crate) fn op_a2flt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpFadd` (fadd)
-pub(crate) fn op_fadd(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fadd(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFadd Invalid type");
     }
@@ -66,7 +76,12 @@ pub(crate) fn op_fadd(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpFsub` (fsub)
-pub(crate) fn op_fsub(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fsub(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFsub: Invalid type");
     }
@@ -83,7 +98,12 @@ pub(crate) fn op_fsub(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpFmul` (fmul)
-pub(crate) fn op_fmul(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fmul(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFmul: Invalid type");
     }
@@ -100,7 +120,12 @@ pub(crate) fn op_fmul(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpFdiv` (fdiv)
-pub(crate) fn op_fdiv(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fdiv(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFdiv: Invalid type");
     }
@@ -118,7 +143,12 @@ pub(crate) fn op_fdiv(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpFix2Flt` (fix2flt)
-pub(crate) fn op_fix2flt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fix2flt(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFix2flt: Invalid type");
     }
@@ -136,7 +166,12 @@ pub(crate) fn op_fix2flt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mu
 }
 
 /// C#: `OpFlt2A` (flt2a)
-pub(crate) fn op_flt2a(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_flt2a(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFlt2a: Invalid type");
     }
@@ -166,13 +201,23 @@ pub(crate) fn op_flt2a(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpSetflt` (setflt)
-pub(crate) fn op_setflt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_setflt(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     vm.st_float.float_precision = vm.op_value(arg0, 0)?;
     Ok(())
 }
 
 /// C#: `OpFlt2Fix` (flt2fix)
-pub(crate) fn op_flt2fix(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_flt2fix(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFlt2fix: Invalid type");
     }
@@ -189,7 +234,12 @@ pub(crate) fn op_flt2fix(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mu
 }
 
 /// C#: `OpFlt2Y4` (flt2y4), real_to_data, little endian.
-pub(crate) fn op_flt2y4(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_flt2y4(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let Some(reg) = arg0.reg() else {
         return internal("OpFlt2y4: Invalid type");
     };
@@ -218,7 +268,12 @@ pub(crate) fn op_flt2y4(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpFlt2Y8` (flt2y8), real_to_data, little endian.
-pub(crate) fn op_flt2y8(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_flt2y8(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let Some(reg) = arg0.reg() else {
         return internal("OpFlt2y8: Invalid type");
     };
@@ -245,7 +300,12 @@ pub(crate) fn op_flt2y8(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpY42Flt` (y42flt), data_to_real, little endian.
-pub(crate) fn op_y42flt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_y42flt(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("Opy42flt: Invalid type");
     }
@@ -255,12 +315,18 @@ pub(crate) fn op_y42flt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut
     if data_array.len() < 4 {
         return internal("BitConverter.ToSingle: index out of range");
     }
-    let value = f32::from_le_bytes([data_array[0], data_array[1], data_array[2], data_array[3]]) as f64;
+    let value =
+        f32::from_le_bytes([data_array[0], data_array[1], data_array[2], data_array[3]]) as f64;
     vm.op_set_raw(arg0, Value::Float(value), 1)
 }
 
 /// C#: `OpY82Flt` (y82flt), data_to_real, little endian.
-pub(crate) fn op_y82flt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_y82flt(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpY82flt: Invalid type");
     }
@@ -276,7 +342,12 @@ pub(crate) fn op_y82flt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpFcomp` (fcomp)
-pub(crate) fn op_fcomp(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fcomp(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let val0 = vm.op_float(arg0)?;
     let val1 = vm.op_float(arg1)?;
 
@@ -397,7 +468,11 @@ fn parse_double_invariant(s: &str) -> Option<f64> {
         _ => (false, t),
     };
     if body.eq_ignore_ascii_case("Infinity") {
-        return Some(if neg { f64::NEG_INFINITY } else { f64::INFINITY });
+        return Some(if neg {
+            f64::NEG_INFINITY
+        } else {
+            f64::INFINITY
+        });
     }
     if body.eq_ignore_ascii_case("NaN") {
         return Some(f64::NAN);
@@ -627,6 +702,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn flt2a_formats_with_precision() {
         let mut vm = vm();
         vm.regs.set_float(Reg::F(0), 3.14159).unwrap();
@@ -697,7 +773,10 @@ mod tests {
         vm.regs.set_float(Reg::F(0), 1.0).unwrap();
         let (mut a0, mut a1) = (Operand::idx(Reg::S(0), 2), Operand::r(Reg::F(0)));
         op_flt2y4(&mut vm, oc(), &mut a0, &mut a1).unwrap();
-        assert_eq!(vm.regs.string(Reg::S(0)).unwrap().get(false), vec![0, 0, 0, 0, 0x80, 0x3F]);
+        assert_eq!(
+            vm.regs.string(Reg::S(0)).unwrap().get(false),
+            vec![0, 0, 0, 0, 0x80, 0x3F]
+        );
     }
 
     #[test]
@@ -734,7 +813,10 @@ mod tests {
     #[test]
     fn y82flt_reads_little_endian_float64() {
         let mut vm = vm();
-        let (mut a0, mut a1) = (Operand::r(Reg::F(0)), Operand::imm_str(&2.5f64.to_le_bytes()));
+        let (mut a0, mut a1) = (
+            Operand::r(Reg::F(0)),
+            Operand::imm_str(&2.5f64.to_le_bytes()),
+        );
         op_y82flt(&mut vm, oc(), &mut a0, &mut a1).unwrap();
         assert_eq!(vm.regs.float(Reg::F(0)).unwrap(), 2.5);
 

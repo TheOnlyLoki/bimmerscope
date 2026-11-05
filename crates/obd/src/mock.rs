@@ -84,7 +84,13 @@ impl Mock {
         self.st()
             .events
             .iter()
-            .filter_map(|e| if let Ev::Write(b, _) = e { Some(b.clone()) } else { None })
+            .filter_map(|e| {
+                if let Ev::Write(b, _) = e {
+                    Some(b.clone())
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 
@@ -101,7 +107,9 @@ impl MockState {
 
 impl SerialLink for Mock {
     fn set_config(&mut self, baud_rate: u32, data_bits: u8, parity: Parity) -> io::Result<()> {
-        self.st().events.push(Ev::Config(baud_rate, data_bits, parity));
+        self.st()
+            .events
+            .push(Ev::Config(baud_rate, data_bits, parity));
         Ok(())
     }
 
@@ -161,7 +169,8 @@ impl SerialLink for Mock {
                 }
             }
             st.rx.make_contiguous().sort_by_key(|(t, _)| *t);
-        } else if st.pending.len() >= front.request.len() || !front.request.starts_with(&st.pending) {
+        } else if st.pending.len() >= front.request.len() || !front.request.starts_with(&st.pending)
+        {
             let p = std::mem::take(&mut st.pending);
             st.unexpected.push(p);
         }

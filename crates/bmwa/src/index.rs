@@ -33,7 +33,13 @@ pub fn list(dir: &Path) -> std::io::Result<Vec<EcuFile>> {
         })
         .map(|path| {
             let name = path.file_name().unwrap().to_string_lossy().into_owned();
-            EcuFile { haystack: name.to_lowercase(), name, path, kind: None, comment: String::new() }
+            EcuFile {
+                haystack: name.to_lowercase(),
+                name,
+                path,
+                kind: None,
+                comment: String::new(),
+            }
         })
         .collect();
     files.sort_by_key(|f| f.name.to_lowercase());
@@ -48,7 +54,14 @@ pub fn spawn(paths: Vec<PathBuf>) -> Receiver<Update> {
                 Ok((kind, desc)) => (Some(kind), desc.ecu_comment()),
                 Err(e) => (None, format!("<{e}>")),
             };
-            if tx.send(Update { index, kind, comment }).is_err() {
+            if tx
+                .send(Update {
+                    index,
+                    kind,
+                    comment,
+                })
+                .is_err()
+            {
                 return;
             }
         }

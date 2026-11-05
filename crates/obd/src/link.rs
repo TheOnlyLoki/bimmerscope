@@ -69,7 +69,13 @@ impl SerialPortLink {
             .open()?;
         port.write_data_terminal_ready(false)?;
         port.write_request_to_send(false)?;
-        Ok(SerialPortLink { port, start: Instant::now(), baud_rate: 9600, data_bits: 8, parity: Parity::None })
+        Ok(SerialPortLink {
+            port,
+            start: Instant::now(),
+            baud_rate: 9600,
+            data_bits: 8,
+            parity: Parity::None,
+        })
     }
 }
 
@@ -96,7 +102,10 @@ impl SerialLink for SerialPortLink {
                 Parity::Odd => serialport::Parity::Odd,
                 Parity::Even => serialport::Parity::Even,
                 Parity::Mark | Parity::Space => {
-                    return Err(io::Error::new(io::ErrorKind::Unsupported, "mark/space parity"));
+                    return Err(io::Error::new(
+                        io::ErrorKind::Unsupported,
+                        "mark/space parity",
+                    ));
                 }
             };
             self.port.set_parity(p)?;

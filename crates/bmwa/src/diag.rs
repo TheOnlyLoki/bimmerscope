@@ -38,13 +38,33 @@ pub enum Command {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
     /// `done` of `total` modules checked. `done == total` ends the scan.
-    ScanProgress { done: usize, total: usize, current_name: String },
-    ModuleFound { id: String, variant: String, fault_count: usize },
-    ModuleMissing { id: String },
-    Faults { id: String, faults: Vec<Fault> },
-    Cleared { id: String, ok: bool, message: String },
+    ScanProgress {
+        done: usize,
+        total: usize,
+        current_name: String,
+    },
+    ModuleFound {
+        id: String,
+        variant: String,
+        fault_count: usize,
+    },
+    ModuleMissing {
+        id: String,
+    },
+    Faults {
+        id: String,
+        faults: Vec<Fault>,
+    },
+    Cleared {
+        id: String,
+        ok: bool,
+        message: String,
+    },
     /// `id` is empty for errors not tied to one module.
-    Error { id: String, message: String },
+    Error {
+        id: String,
+        message: String,
+    },
 }
 
 /// UI side of the worker: send commands, drain events.
@@ -74,7 +94,10 @@ pub fn spawn(ecu_dir: PathBuf, args: Args) -> Handle {
             }
         }
     });
-    Handle { tx: cmd_tx, rx: ev_rx }
+    Handle {
+        tx: cmd_tx,
+        rx: ev_rx,
+    }
 }
 
 /// Returns false when the UI side is gone.
@@ -90,7 +113,10 @@ fn available(dir: &Path) -> Vec<&'static Module> {
         .flatten()
         .map(|e| e.file_name().to_string_lossy().to_lowercase())
         .collect();
-    modules::MODULES.iter().filter(|m| names.contains(&format!("{}.grp", m.id))).collect()
+    modules::MODULES
+        .iter()
+        .filter(|m| names.contains(&format!("{}.grp", m.id)))
+        .collect()
 }
 
 /// Resolves the module's group file and runs one job on it.
@@ -106,19 +132,44 @@ fn scan(ed: &mut Ediabas, tx: &Sender<Event>) -> bool {
     let list = available(ed.ecu_dir());
     let total = list.len();
     if ed.iface_mut().is_none() {
-        let progress = Event::ScanProgress { done: 0, total: 0, current_name: String::new() };
-        let error = Event::Error { id: String::new(), message: NO_ADAPTER.into() };
+        let progress = Event::ScanProgress {
+            done: 0,
+            total: 0,
+            current_name: String::new(),
+        };
+        let error = Event::Error {
+            id: String::new(),
+            message: NO_ADAPTER.into(),
+        };
         return emit(tx, progress) && emit(tx, error);
     }
     for (done, m) in list.iter().enumerate() {
-        if !emit(tx, Event::ScanProgress { done, total, current_name: m.name_en.into() }) {
+        if !emit(
+            tx,
+            Event::ScanProgress {
+                done,
+                total,
+                current_name: m.name_en.into(),
+            },
+        ) {
             return false;
         }
         let ev = match run_job(ed, m.id, JOB_READ_FAULTS) {
             Ok(sets) => {
-                let first = sets.first().map(|s| text(s, "VARIANTE")).unwrap_or_default();
-                let variant = if first.is_empty() { ed.variant_name() } else { first };
-                Event::ModuleFound { id: m.id.into(), variant, fault_count: parse_faults(&sets).len() }
+                let first = sets
+                    .first()
+                    .map(|s| text(s, "VARIANTE"))
+                    .unwrap_or_default();
+                let variant = if first.is_empty() {
+                    ed.variant_name()
+                } else {
+                    first
+                };
+                Event::ModuleFound {
+                    id: m.id.into(),
+                    variant,
+                    fault_count: parse_faults(&sets).len(),
+                }
             }
             Err(_) => Event::ModuleMissing { id: m.id.into() },
         };
@@ -126,13 +177,26 @@ fn scan(ed: &mut Ediabas, tx: &Sender<Event>) -> bool {
             return false;
         }
     }
-    emit(tx, Event::ScanProgress { done: total, total, current_name: String::new() })
+    emit(
+        tx,
+        Event::ScanProgress {
+            done: total,
+            total,
+            current_name: String::new(),
+        },
+    )
 }
 
 fn read_faults(ed: &mut Ediabas, id: &str, tx: &Sender<Event>) -> bool {
     let ev = match run_job(ed, id, JOB_READ_FAULTS) {
-        Ok(sets) => Event::Faults { id: id.into(), faults: parse_faults(&sets) },
-        Err(message) => Event::Error { id: id.into(), message },
+        Ok(sets) => Event::Faults {
+            id: id.into(),
+            faults: parse_faults(&sets),
+        },
+        Err(message) => Event::Error {
+            id: id.into(),
+            message,
+        },
     };
     emit(tx, ev)
 }
@@ -140,11 +204,24 @@ fn read_faults(ed: &mut Ediabas, id: &str, tx: &Sender<Event>) -> bool {
 fn clear_faults(ed: &mut Ediabas, id: &str, tx: &Sender<Event>) -> bool {
     let ev = match run_job(ed, id, JOB_CLEAR_FAULTS) {
         Ok(sets) => {
-            let status = sets.iter().rev().map(|s| text(s, "JOB_STATUS")).find(|t| !t.is_empty()).unwrap_or_default();
+            let status = sets
+                .iter()
+                .rev()
+                .map(|s| text(s, "JOB_STATUS"))
+                .find(|t| !t.is_empty())
+                .unwrap_or_default();
             let ok = status.is_empty() || status == "OKAY";
-            Event::Cleared { id: id.into(), ok, message: if ok { String::new() } else { status } }
+            Event::Cleared {
+                id: id.into(),
+                ok,
+                message: if ok { String::new() } else { status },
+            }
         }
-        Err(message) => Event::Cleared { id: id.into(), ok: false, message },
+        Err(message) => Event::Cleared {
+            id: id.into(),
+            ok: false,
+            message,
+        },
     };
     emit(tx, ev)
 }
@@ -184,7 +261,11 @@ pub fn code_hex(code: u32) -> String {
 pub enum ScanState {
     #[default]
     Idle,
-    Running { done: usize, total: usize, current: String },
+    Running {
+        done: usize,
+        total: usize,
+        current: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -215,16 +296,29 @@ pub struct FaultMemory {
 impl FaultMemory {
     /// Clears the previous result and enters the running state.
     pub fn begin_scan(&mut self) {
-        *self = Self { scan: ScanState::Running { done: 0, total: 0, current: String::new() }, ..Self::default() };
+        *self = Self {
+            scan: ScanState::Running {
+                done: 0,
+                total: 0,
+                current: String::new(),
+            },
+            ..Self::default()
+        };
     }
 
     pub fn needs_read(&self, id: &str) -> bool {
-        !self.faults.contains_key(id) && !self.errors.contains_key(id) && !self.requested.contains(id)
+        !self.faults.contains_key(id)
+            && !self.errors.contains_key(id)
+            && !self.requested.contains(id)
     }
 
     pub fn apply(&mut self, ev: Event) {
         match ev {
-            Event::ScanProgress { done, total, current_name } => {
+            Event::ScanProgress {
+                done,
+                total,
+                current_name,
+            } => {
                 if done >= total {
                     self.scan = ScanState::Idle;
                     self.notice = Some(format!(
@@ -233,11 +327,23 @@ impl FaultMemory {
                         self.silent.len()
                     ));
                 } else {
-                    self.scan = ScanState::Running { done, total, current: current_name };
+                    self.scan = ScanState::Running {
+                        done,
+                        total,
+                        current: current_name,
+                    };
                 }
             }
-            Event::ModuleFound { id, variant, fault_count } => {
-                self.found.push(Found { id, variant, fault_count });
+            Event::ModuleFound {
+                id,
+                variant,
+                fault_count,
+            } => {
+                self.found.push(Found {
+                    id,
+                    variant,
+                    fault_count,
+                });
                 self.found.sort_by_key(|f| modules::position(&f.id));
             }
             Event::ModuleMissing { id } => self.silent.push(id),
@@ -303,7 +409,10 @@ mod tests {
 
     #[test]
     fn parses_faults_from_result_sets() {
-        let system = set(&[("VARIANTE", s("PDC_65_2")), ("F_ORT_NR", ResultValue::Int(1))]);
+        let system = set(&[
+            ("VARIANTE", s("PDC_65_2")),
+            ("F_ORT_NR", ResultValue::Int(1)),
+        ]);
         let fault = set(&[
             ("F_ORT_NR", ResultValue::Int(0x2A8F)),
             ("F_ORT_TEXT", s("Fehlerort: CAN-High")),
@@ -340,28 +449,55 @@ mod tests {
         m.begin_scan();
         assert!(matches!(m.scan, ScanState::Running { .. }));
 
-        m.apply(Event::ScanProgress { done: 0, total: 3, current_name: "Engine".into() });
+        m.apply(Event::ScanProgress {
+            done: 0,
+            total: 3,
+            current_name: "Engine".into(),
+        });
         assert_eq!(
             m.scan,
-            ScanState::Running { done: 0, total: 3, current: "Engine".into() }
+            ScanState::Running {
+                done: 0,
+                total: 3,
+                current: "Engine".into()
+            }
         );
-        m.apply(Event::ModuleFound { id: "d_pdc".into(), variant: "pdc".into(), fault_count: 1 });
+        m.apply(Event::ModuleFound {
+            id: "d_pdc".into(),
+            variant: "pdc".into(),
+            fault_count: 1,
+        });
         m.apply(Event::ModuleMissing { id: "d_egs".into() });
-        m.apply(Event::ModuleFound { id: "d_motor".into(), variant: "d60".into(), fault_count: 0 });
+        m.apply(Event::ModuleFound {
+            id: "d_motor".into(),
+            variant: "d60".into(),
+            fault_count: 0,
+        });
 
         // Found modules keep scan-list order, not arrival order.
         let ids: Vec<&str> = m.found.iter().map(|f| f.id.as_str()).collect();
         assert_eq!(ids, ["d_motor", "d_pdc"]);
 
-        m.apply(Event::ScanProgress { done: 3, total: 3, current_name: String::new() });
+        m.apply(Event::ScanProgress {
+            done: 3,
+            total: 3,
+            current_name: String::new(),
+        });
         assert_eq!(m.scan, ScanState::Idle);
-        assert_eq!(m.notice.as_deref(), Some("Scan done: 2 found, 1 not answering."));
+        assert_eq!(
+            m.notice.as_deref(),
+            Some("Scan done: 2 found, 1 not answering.")
+        );
     }
 
     #[test]
     fn begin_scan_resets_previous_result() {
         let mut m = FaultMemory::default();
-        m.apply(Event::ModuleFound { id: "d_motor".into(), variant: "d60".into(), fault_count: 0 });
+        m.apply(Event::ModuleFound {
+            id: "d_motor".into(),
+            variant: "d60".into(),
+            fault_count: 0,
+        });
         m.faults.insert("d_motor".into(), Vec::new());
         m.begin_scan();
         assert!(m.found.is_empty());
@@ -371,21 +507,42 @@ mod tests {
     #[test]
     fn fault_reads_and_clear_flow() {
         let mut m = FaultMemory::default();
-        m.apply(Event::ModuleFound { id: "d_pdc".into(), variant: "pdc".into(), fault_count: 1 });
+        m.apply(Event::ModuleFound {
+            id: "d_pdc".into(),
+            variant: "pdc".into(),
+            fault_count: 1,
+        });
         assert!(m.needs_read("d_pdc"));
         m.requested.insert("d_pdc".into());
         assert!(!m.needs_read("d_pdc"));
 
-        let fault = Fault { code: 0xE205, text: "t".into(), symptom: String::new(), present: String::new(), warning: String::new() };
-        m.apply(Event::Faults { id: "d_pdc".into(), faults: vec![fault] });
+        let fault = Fault {
+            code: 0xE205,
+            text: "t".into(),
+            symptom: String::new(),
+            present: String::new(),
+            warning: String::new(),
+        };
+        m.apply(Event::Faults {
+            id: "d_pdc".into(),
+            faults: vec![fault],
+        });
         assert_eq!(m.found[0].fault_count, 1);
         assert!(!m.needs_read("d_pdc"));
 
-        m.apply(Event::Cleared { id: "d_pdc".into(), ok: false, message: "locked".into() });
+        m.apply(Event::Cleared {
+            id: "d_pdc".into(),
+            ok: false,
+            message: "locked".into(),
+        });
         assert_eq!(m.notice.as_deref(), Some("locked"));
         assert!(!m.needs_read("d_pdc"));
 
-        m.apply(Event::Cleared { id: "d_pdc".into(), ok: true, message: String::new() });
+        m.apply(Event::Cleared {
+            id: "d_pdc".into(),
+            ok: true,
+            message: String::new(),
+        });
         assert!(m.faults.is_empty());
         assert!(m.needs_read("d_pdc"));
     }
@@ -393,26 +550,59 @@ mod tests {
     #[test]
     fn clear_notice_waits_for_reread() {
         let mut m = FaultMemory::default();
-        m.apply(Event::ModuleFound { id: "d_pdc".into(), variant: "pdc".into(), fault_count: 1 });
-        m.apply(Event::Cleared { id: "d_pdc".into(), ok: true, message: String::new() });
+        m.apply(Event::ModuleFound {
+            id: "d_pdc".into(),
+            variant: "pdc".into(),
+            fault_count: 1,
+        });
+        m.apply(Event::Cleared {
+            id: "d_pdc".into(),
+            ok: true,
+            message: String::new(),
+        });
         assert_ne!(m.notice.as_deref(), Some("Stored faults deleted."));
 
-        let stuck = Fault { code: 0xE205, text: "t".into(), symptom: String::new(), present: String::new(), warning: String::new() };
-        m.apply(Event::Faults { id: "d_pdc".into(), faults: vec![stuck] });
-        assert_eq!(m.notice.as_deref(), Some("Some faults came back. They are still present in the car."));
+        let stuck = Fault {
+            code: 0xE205,
+            text: "t".into(),
+            symptom: String::new(),
+            present: String::new(),
+            warning: String::new(),
+        };
+        m.apply(Event::Faults {
+            id: "d_pdc".into(),
+            faults: vec![stuck],
+        });
+        assert_eq!(
+            m.notice.as_deref(),
+            Some("Some faults came back. They are still present in the car.")
+        );
 
-        m.apply(Event::Cleared { id: "d_pdc".into(), ok: true, message: String::new() });
-        m.apply(Event::Faults { id: "d_pdc".into(), faults: Vec::new() });
+        m.apply(Event::Cleared {
+            id: "d_pdc".into(),
+            ok: true,
+            message: String::new(),
+        });
+        m.apply(Event::Faults {
+            id: "d_pdc".into(),
+            faults: Vec::new(),
+        });
         assert_eq!(m.notice.as_deref(), Some("Stored faults deleted."));
     }
 
     #[test]
     fn read_error_is_kept_per_module() {
         let mut m = FaultMemory::default();
-        m.apply(Event::Error { id: "d_egs".into(), message: "no answer".into() });
+        m.apply(Event::Error {
+            id: "d_egs".into(),
+            message: "no answer".into(),
+        });
         assert_eq!(m.errors.get("d_egs").map(String::as_str), Some("no answer"));
         assert!(!m.needs_read("d_egs"));
-        m.apply(Event::Error { id: String::new(), message: NO_ADAPTER.into() });
+        m.apply(Event::Error {
+            id: String::new(),
+            message: NO_ADAPTER.into(),
+        });
         assert!(!m.errors.contains_key(""));
     }
 
@@ -420,17 +610,28 @@ mod tests {
     /// BMWA_ECU_DIR=.../EcuRenamed BMWA_SIM_FILE=.../Sample/obd.sim cargo test -p bmwa
     #[test]
     fn worker_scans_sim_and_finds_motor() {
-        let (Ok(dir), Ok(sim)) = (std::env::var("BMWA_ECU_DIR"), std::env::var("BMWA_SIM_FILE")) else {
+        let (Ok(dir), Ok(sim)) = (
+            std::env::var("BMWA_ECU_DIR"),
+            std::env::var("BMWA_SIM_FILE"),
+        ) else {
             eprintln!("skipped: set BMWA_ECU_DIR and BMWA_SIM_FILE");
             return;
         };
-        let args = Args { ecu_dir: Some(PathBuf::from(&dir)), sim: Some(PathBuf::from(sim)), port: None };
+        let args = Args {
+            ecu_dir: Some(PathBuf::from(&dir)),
+            sim: Some(PathBuf::from(sim)),
+            port: None,
+        };
         let handle = spawn(PathBuf::from(&dir), args);
         handle.tx.send(Command::Scan).unwrap();
 
         let mut motor = None;
         loop {
-            match handle.rx.recv_timeout(Duration::from_secs(120)).expect("worker timed out") {
+            match handle
+                .rx
+                .recv_timeout(Duration::from_secs(120))
+                .expect("worker timed out")
+            {
                 Event::ModuleFound { id, variant, .. } if id == "d_motor" => motor = Some(variant),
                 Event::ScanProgress { done, total, .. } if done == total => break,
                 _ => {}

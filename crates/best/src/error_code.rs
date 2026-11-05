@@ -451,9 +451,9 @@ impl ErrorCode {
             ErrorCode::EDIABAS_IFH_0014 => 24,
             ErrorCode::EDIABAS_IFH_0015 => 25,
             ErrorCode::EDIABAS_IFH_0016 => 26,
-            ErrorCode::EDIABAS_BIP_0011 => 8,  // version-gated in C#
-            ErrorCode::EDIABAS_IFH_0069 => 28,  // version-gated in C#
-            ErrorCode::EDIABAS_IFH_0074 => 29,  // version-gated in C#
+            ErrorCode::EDIABAS_BIP_0011 => 8, // version-gated in C#
+            ErrorCode::EDIABAS_IFH_0069 => 28, // version-gated in C#
+            ErrorCode::EDIABAS_IFH_0074 => 29, // version-gated in C#
             _ => 0,
         }
     }

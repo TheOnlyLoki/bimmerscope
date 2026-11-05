@@ -47,7 +47,10 @@ impl Flags {
     }
 
     pub fn to_value(self) -> u32 {
-        self.carry as u32 | (self.zero as u32) << 1 | (self.sign as u32) << 2 | (self.overflow as u32) << 3
+        self.carry as u32
+            | (self.zero as u32) << 1
+            | (self.sign as u32) << 2
+            | (self.overflow as u32) << 3
     }
 
     pub fn from_value(&mut self, value: u32) {

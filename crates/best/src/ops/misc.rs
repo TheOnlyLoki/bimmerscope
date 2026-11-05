@@ -67,14 +67,20 @@ impl State {
 }
 
 /// C#: `SharedDataDict`. Static, shared by all VM instances. Keys are upper case.
-static SHARED_DATA: LazyLock<Mutex<HashMap<String, Vec<u8>>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+static SHARED_DATA: LazyLock<Mutex<HashMap<String, Vec<u8>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 fn shared_data() -> MutexGuard<'static, HashMap<String, Vec<u8>>> {
     SHARED_DATA.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 /// C#: `OpGettmr` (gettmr)
-pub(crate) fn op_gettmr(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_gettmr(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpGettmr: Invalid type");
     }
@@ -87,13 +93,23 @@ pub(crate) fn op_gettmr(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &m
 }
 
 /// C#: `OpSettmr` (settmr)
-pub(crate) fn op_settmr(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_settmr(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     vm.error_trap_mask = vm.op_value(arg0, 0)?;
     Ok(())
 }
 
 /// C#: `OpSett` (sett)
-pub(crate) fn op_sett(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_sett(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     let mut error = vm.op_value(arg0, 0)?;
     if error == 0 {
         // C# quirk: 0 selects the bit above the 32 error codes instead of bit 0.
@@ -105,18 +121,33 @@ pub(crate) fn op_sett(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut
 }
 
 /// C#: `OpClrt` (clrt)
-pub(crate) fn op_clrt(vm: &mut Vm, _oc: &OpCode, _arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_clrt(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    _arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     vm.error_trap_bit_nr = -1;
     Ok(())
 }
 
 /// C#: `OpBreak` (break). User break: raises `EDIABAS_BIP_0008`.
-pub(crate) fn op_break(vm: &mut Vm, _oc: &OpCode, _arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_break(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    _arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     vm.set_error(ErrorCode::EDIABAS_BIP_0008)
 }
 
 /// C#: `OpFclose` (fclose)
-pub(crate) fn op_fclose(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fclose(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     let handle = vm.op_value(arg0, 1)?;
     if !vm.st_misc.close_user_file(handle) {
         vm.set_error(ErrorCode::EDIABAS_BIP_0006)?;
@@ -125,7 +156,12 @@ pub(crate) fn op_fclose(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &m
 }
 
 /// C#: `OpFopen` (fopen). Handle is written to arg0, -1 (0xFFFFFFFF) on failure.
-pub(crate) fn op_fopen(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fopen(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFopen: Invalid type");
     }
@@ -151,12 +187,17 @@ pub(crate) fn op_fopen(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpFread` (fread). One byte; 0 with carry set at end of file or on error.
-pub(crate) fn op_fread(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fread(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFread: Invalid type");
     }
     let handle = vm.op_value(arg1, 1)?;
-    let value: i32 = match with_user_file(vm, handle, |f| read_byte(f))? {
+    let value: i32 = match with_user_file(vm, handle, read_byte)? {
         Some(Some(b)) => b as i32,
         _ => -1,
     };
@@ -171,12 +212,17 @@ pub(crate) fn op_fread(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpFreadln` (freadln). Line without line break; empty with carry set at end of file or on error.
-pub(crate) fn op_freadln(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_freadln(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFreadln: Invalid type");
     }
     let handle = vm.op_value(arg1, 1)?;
-    let line = with_user_file(vm, handle, |f| read_file_line(f))?.flatten();
+    let line = with_user_file(vm, handle, read_file_line)?.flatten();
     let bytes = match line {
         Some(line) => {
             vm.flags.carry = false;
@@ -191,7 +237,12 @@ pub(crate) fn op_freadln(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &m
 }
 
 /// C#: `OpFseek` (fseek)
-pub(crate) fn op_fseek(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fseek(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let handle = vm.op_value(arg0, 1)?;
     let position = vm.op_value(arg1, 0)?;
     with_user_file(vm, handle, |f| f.seek(SeekFrom::Start(position as u64)))?;
@@ -199,7 +250,12 @@ pub(crate) fn op_fseek(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpFseekln` (fseekln). Seeks to the start of line `line` (0-based).
-pub(crate) fn op_fseekln(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fseekln(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let handle = vm.op_value(arg0, 1)?;
     let line = vm.op_value(arg1, 0)?;
     with_user_file(vm, handle, |f| {
@@ -215,7 +271,12 @@ pub(crate) fn op_fseekln(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &m
 }
 
 /// C#: `OpFtell` (ftell). Byte position (truncated to 32 bits, as C# `(Int32)`).
-pub(crate) fn op_ftell(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ftell(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFtell: Invalid type");
     }
@@ -227,7 +288,12 @@ pub(crate) fn op_ftell(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpFtellln` (ftellln). Index of the line the current position is in (0-based).
-pub(crate) fn op_ftellln(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ftellln(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFtellln: Invalid type");
     }
@@ -239,20 +305,35 @@ pub(crate) fn op_ftellln(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &m
 }
 
 /// C#: `OpWait` (wait). Seconds.
-pub(crate) fn op_wait(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_wait(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     let value = vm.op_value(arg0, 0)?;
     // C#: `(int)(uint * 1000)`, the product is long, then truncated to int.
     sleep_ms((value as i64 * 1000) as i32)
 }
 
 /// C#: `OpWaitex` (waitex). Milliseconds.
-pub(crate) fn op_waitex(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_waitex(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     let value = vm.op_value(arg0, 0)?;
     sleep_ms(value as i32)
 }
 
 /// C#: `OpTicks` (ticks). Milliseconds since 0001-01-01, truncated to 32 bits.
-pub(crate) fn op_ticks(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ticks(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpTicks: Invalid type");
     }
@@ -262,7 +343,12 @@ pub(crate) fn op_ticks(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mu
 }
 
 /// C#: `OpDate` (date). Writes `[day, month, year % 100, week, weekday]`.
-pub(crate) fn op_date(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_date(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpDate: Invalid type");
     }
@@ -272,7 +358,12 @@ pub(crate) fn op_date(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut
 }
 
 /// C#: `OpTime` (time). Writes `[hour, minute, second]`.
-pub(crate) fn op_time(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_time(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpTime: Invalid type");
     }
@@ -282,7 +373,12 @@ pub(crate) fn op_time(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut
 }
 
 /// C#: `OpCfgig` (cfgig). Integer config property into arg0, unchanged if unset.
-pub(crate) fn op_cfgig(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_cfgig(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpCfgig: Invalid type");
     }
@@ -296,7 +392,12 @@ pub(crate) fn op_cfgig(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpCfgis` (cfgis). Stores arg1 (decimal) as config property named arg0.
-pub(crate) fn op_cfgis(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_cfgis(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let value = vm.op_value(arg1, 0)?;
     let key = vm.op_string(arg0)?;
     set_config_property(vm, &key, &value.to_string());
@@ -304,7 +405,12 @@ pub(crate) fn op_cfgis(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpCfgsg` (cfgsg). String config property into arg0, unchanged if unset.
-pub(crate) fn op_cfgsg(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_cfgsg(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpCfgsg: Invalid type");
     }
@@ -317,7 +423,12 @@ pub(crate) fn op_cfgsg(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpShmset` (shmset). Stores arg1 bytes under key arg0.
-pub(crate) fn op_shmset(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_shmset(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let key = vm.op_string(arg0)?.to_uppercase();
     let data = vm.op_array(arg1)?;
     shared_data().insert(key, data);
@@ -325,7 +436,12 @@ pub(crate) fn op_shmset(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mu
 }
 
 /// C#: `OpShmget` (shmget). Carry set if the key is unknown (arg0 becomes empty).
-pub(crate) fn op_shmget(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_shmget(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpShmget: Invalid type");
     }
@@ -345,7 +461,12 @@ pub(crate) fn op_shmget(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mu
 }
 
 /// C#: `OpIupdate` (iupdate). Progress text.
-pub(crate) fn op_iupdate(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_iupdate(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     let text = vm.op_string(arg0)?;
     vm.st_misc.info_progress_text = text;
     // C# `JobProgressInform()` calls a delegate. No progress callback in the Rust VM.
@@ -353,7 +474,12 @@ pub(crate) fn op_iupdate(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &
 }
 
 /// C#: `OpIrange` (irange). Sets progress range, resets position.
-pub(crate) fn op_irange(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_irange(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     let range = vm.op_value(arg0, 0)?;
     vm.st_misc.info_progress_pos = -1;
     vm.st_misc.info_progress_range = range as i64;
@@ -362,10 +488,19 @@ pub(crate) fn op_irange(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &m
 }
 
 /// C#: `OpIincpos` (iincpos). Adds to the progress position, clamped to the range.
-pub(crate) fn op_iincpos(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_iincpos(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     let inc = vm.op_value(arg0, 0)? as i64;
     let st = &mut vm.st_misc;
-    let mut new_value = if st.info_progress_pos < 0 { inc } else { st.info_progress_pos.wrapping_add(inc) };
+    let mut new_value = if st.info_progress_pos < 0 {
+        inc
+    } else {
+        st.info_progress_pos.wrapping_add(inc)
+    };
     if new_value > st.info_progress_range {
         new_value = st.info_progress_range;
     }
@@ -390,10 +525,7 @@ fn with_user_file<T>(
     handle: u32,
     op: impl FnOnce(&mut BufReader<File>) -> io::Result<T>,
 ) -> VmResult<Option<T>> {
-    let result = match vm.st_misc.user_file_mut(handle) {
-        None => None,
-        Some(file) => Some(op(file)),
-    };
+    let result = vm.st_misc.user_file_mut(handle).map(op);
     match result {
         Some(Ok(v)) => Ok(Some(v)),
         _ => {
@@ -406,7 +538,11 @@ fn with_user_file<T>(
 /// C#: `ReadByte`. `None` at end of file.
 fn read_byte(f: &mut impl Read) -> io::Result<Option<u8>> {
     let mut b = [0u8; 1];
-    Ok(if f.read(&mut b)? == 0 { None } else { Some(b[0]) })
+    Ok(if f.read(&mut b)? == 0 {
+        None
+    } else {
+        Some(b[0])
+    })
 }
 
 /// C#: after a `\r`, step back over the next byte unless it is `\n` (or EOF).
@@ -476,7 +612,11 @@ fn line_index_at_position(f: &mut BufReader<File>) -> io::Result<u32> {
 fn set_config_property(vm: &mut Vm, name: &str, value: &str) {
     let key = name.to_uppercase();
     // C# dictionary keys are upper case; match case-insensitively.
-    let existing = vm.config.keys().find(|k| k.eq_ignore_ascii_case(&key)).cloned();
+    let existing = vm
+        .config
+        .keys()
+        .find(|k| k.eq_ignore_ascii_case(&key))
+        .cloned();
     match existing {
         Some(k) => {
             if value.is_empty() {
@@ -501,14 +641,21 @@ fn string_to_value(number: &str) -> i64 {
     let lower = local.to_lowercase();
     if let Some(rest) = lower.strip_prefix("0x") {
         // C# checks the first digit only, then `Convert.ToInt64(.., 16)`.
-        let first_ok = rest.chars().next().is_some_and(|c| c.is_ascii_digit() || ('a'..='f').contains(&c));
+        let first_ok = rest
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_digit() || ('a'..='f').contains(&c));
         if first_ok {
-            return u64::from_str_radix(&local[2..], 16).map(|v| v as i64).unwrap_or(0);
+            return u64::from_str_radix(&local[2..], 16)
+                .map(|v| v as i64)
+                .unwrap_or(0);
         }
         return 0;
     }
     if lower.starts_with("0y") {
-        return u64::from_str_radix(&local[2..], 2).map(|v| v as i64).unwrap_or(0);
+        return u64::from_str_radix(&local[2..], 2)
+            .map(|v| v as i64)
+            .unwrap_or(0);
     }
     if lower == "-" || lower == "--" {
         return 0;
@@ -526,7 +673,9 @@ fn string_to_value(number: &str) -> i64 {
 
 /// Current time since the Unix epoch (UTC).
 fn unix_now() -> Duration {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default()
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
 }
 
 /// C#: `DateTime.Now.Ticks / 10000`: milliseconds since 0001-01-01 (low 32 bits).
@@ -574,7 +723,13 @@ fn date_bytes(unix_secs: i64) -> [u8; 5] {
     let days = unix_secs.div_euclid(86_400);
     let (year, month, day) = civil_from_days(days);
     let weekday = (days + 3).rem_euclid(7) + 1;
-    [day as u8, month as u8, year.rem_euclid(100) as u8, iso_week(days) as u8, weekday as u8]
+    [
+        day as u8,
+        month as u8,
+        year.rem_euclid(100) as u8,
+        iso_week(days) as u8,
+        weekday as u8,
+    ]
 }
 
 /// C# `OpTime` payload: hour, minute, second.
@@ -602,7 +757,11 @@ mod tests {
 
     /// Writes `content` to a unique temp file for this test.
     fn temp_file(name: &str, content: &[u8]) -> std::path::PathBuf {
-        let path = std::env::temp_dir().join(format!("best_misc_test_{}_{}.txt", name, std::process::id()));
+        let path = std::env::temp_dir().join(format!(
+            "best_misc_test_{}_{}.txt",
+            name,
+            std::process::id()
+        ));
         std::fs::write(&path, content).unwrap();
         path
     }
@@ -661,7 +820,10 @@ mod tests {
         let mut vm = test_vm();
         let (mut a0, mut a1) = (Operand::none(), Operand::none());
         let r = op_break(&mut vm, oc(), &mut a0, &mut a1);
-        assert!(matches!(r, Err(VmError::Raised(ErrorCode::EDIABAS_BIP_0008))));
+        assert!(matches!(
+            r,
+            Err(VmError::Raised(ErrorCode::EDIABAS_BIP_0008))
+        ));
     }
 
     #[test]
@@ -831,7 +993,10 @@ mod tests {
         let missing = std::env::temp_dir().join("best_misc_test_does_not_exist.txt");
         let (mut a0, mut a1) = (Operand::r(Reg::L(0)), path_operand(&missing));
         let r = op_fopen(&mut vm, oc(), &mut a0, &mut a1);
-        assert!(matches!(r, Err(VmError::Raised(ErrorCode::EDIABAS_BIP_0006))));
+        assert!(matches!(
+            r,
+            Err(VmError::Raised(ErrorCode::EDIABAS_BIP_0006))
+        ));
     }
 
     #[test]

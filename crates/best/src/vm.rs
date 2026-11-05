@@ -170,7 +170,11 @@ impl Vm {
 
     /// C#: `RaiseError`. Returns the error to propagate.
     pub fn raise_error(&mut self, error: ErrorCode) -> VmError {
-        let code = if self.job_std_exit { ErrorCode::EDIABAS_SYS_0018 } else { error };
+        let code = if self.job_std_exit {
+            ErrorCode::EDIABAS_SYS_0018
+        } else {
+            error
+        };
         self.error_code_last = code;
         VmError::Raised(code)
     }
@@ -187,12 +191,20 @@ impl Vm {
 
     /// C#: `_resultsRequestDict` check: is this result wanted by the caller?
     pub fn is_result_requested(&self, name: &str) -> bool {
-        self.requested_results.is_empty() || self.requested_results.iter().any(|r| r.eq_ignore_ascii_case(name))
+        self.requested_results.is_empty()
+            || self
+                .requested_results
+                .iter()
+                .any(|r| r.eq_ignore_ascii_case(name))
     }
 
     /// C#: `GetActiveArgBinary`.
     pub fn active_arg_binary(&self) -> &[u8] {
-        if self.job_std { &self.args.binary_std } else { &self.args.binary }
+        if self.job_std {
+            &self.args.binary_std
+        } else {
+            &self.args.binary
+        }
     }
 
     /// C#: `GetActiveArgStrings`: the argument split at ';'.
@@ -206,7 +218,10 @@ impl Vm {
     }
 
     pub fn config_property(&self, key: &str) -> Option<&str> {
-        self.config.iter().find(|(k, _)| k.eq_ignore_ascii_case(key)).map(|(_, v)| v.as_str())
+        self.config
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case(key))
+            .map(|(_, v)| v.as_str())
     }
 
     fn code(&self, off: u32, len: usize) -> VmResult<Vec<u8>> {
@@ -239,7 +254,11 @@ impl Vm {
             RegS | RegAb | RegI | RegL => (reg(b[0])?, OpData::None, OpData::None),
             Imm8 => (OpData::Val(b[0] as u32), OpData::None, OpData::None),
             Imm16 => (OpData::Val(u16_at(&b, 0)), OpData::None, OpData::None),
-            Imm32 => (OpData::Val(u32::from_le_bytes([b[0], b[1], b[2], b[3]])), OpData::None, OpData::None),
+            Imm32 => (
+                OpData::Val(u32::from_le_bytes([b[0], b[1], b[2], b[3]])),
+                OpData::None,
+                OpData::None,
+            ),
             ImmStr => {
                 let len = i16::from_le_bytes([b[0], b[1]]).max(0) as usize;
                 let s = self.code(self.pc, len)?;
@@ -249,7 +268,11 @@ impl Vm {
             IdxImm => (reg(b[0])?, OpData::Val(u16_at(&b, 1)), OpData::None),
             IdxReg => (reg(b[0])?, reg(b[1])?, OpData::None),
             IdxRegImm => (reg(b[0])?, reg(b[1])?, OpData::Val(u16_at(&b, 2))),
-            IdxImmLenImm => (reg(b[0])?, OpData::Val(u16_at(&b, 1)), OpData::Val(u16_at(&b, 3))),
+            IdxImmLenImm => (
+                reg(b[0])?,
+                OpData::Val(u16_at(&b, 1)),
+                OpData::Val(u16_at(&b, 3)),
+            ),
             IdxImmLenReg => (reg(b[0])?, OpData::Val(u16_at(&b, 1)), reg(b[3])?),
             IdxRegLenImm => (reg(b[0])?, reg(b[1])?, OpData::Val(u16_at(&b, 2))),
             IdxRegLenReg => (reg(b[0])?, reg(b[1])?, reg(b[2])?),
@@ -289,7 +312,10 @@ impl Vm {
             let head = self.code(self.pc, 2)?;
             self.pc += 2;
             let Some(oc) = OPCODES.get(head[0] as usize) else {
-                return internal(format!("opcode {:#04x} out of range at {pc_old:#x}", head[0]));
+                return internal(format!(
+                    "opcode {:#04x} out of range at {pc_old:#x}",
+                    head[0]
+                ));
             };
             let mut a0 = self.fetch_operand(AddrMode::from_nibble(head[1] >> 4))?;
             let mut a1 = self.fetch_operand(AddrMode::from_nibble(head[1]))?;
@@ -315,8 +341,14 @@ impl Vm {
     /// Runs a job by name from this SGBD (no init job, no system results,
     /// no `uses` jobs). See `crate::Ediabas` for the full job layer.
     pub fn execute_job(&mut self, name: &str) -> VmResult<()> {
-        let job = self.sgbd.jobs.iter().find(|j| j.name.eq_ignore_ascii_case(name));
-        let address = job.ok_or_else(|| VmError::JobNotFound(name.to_string()))?.address;
+        let job = self
+            .sgbd
+            .jobs
+            .iter()
+            .find(|j| j.name.eq_ignore_ascii_case(name));
+        let address = job
+            .ok_or_else(|| VmError::JobNotFound(name.to_string()))?
+            .address;
         self.code = self.sgbd.clone();
         self.run(address)
     }

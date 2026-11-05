@@ -66,10 +66,25 @@ fn comm_parameter_bmw_fast_sets_port() {
     let mock = Mock::new();
     let c = core(&mock, BMW_FAST);
     assert_eq!(c.transmit, Some(Transmit::BmwFast));
-    assert_eq!((c.par_timeout_std, c.par_timeout_tel_end, c.par_retry_nr78, c.par_timeout_nr78), (1200, 20, 2, 5000));
+    assert_eq!(
+        (
+            c.par_timeout_std,
+            c.par_timeout_tel_end,
+            c.par_retry_nr78,
+            c.par_timeout_nr78
+        ),
+        (1200, 20, 2, 5000)
+    );
     assert!(!c.par_send_set_dtr);
     // echo adapter: DTR on, RTS off
-    assert_eq!(mock.st().events, vec![Ev::Config(115200, 8, Parity::None), Ev::Dtr(true), Ev::Rts(false)]);
+    assert_eq!(
+        mock.st().events,
+        vec![
+            Ev::Config(115200, 8, Parity::None),
+            Ev::Dtr(true),
+            Ev::Rts(false)
+        ]
+    );
 }
 
 #[test]
@@ -90,7 +105,10 @@ fn comm_parameter_errors() {
     for (pars, err) in [
         (vec![], ErrorCode::EDIABAS_IFH_0041),
         (vec![0x0006, 9600], ErrorCode::EDIABAS_IFH_0041),
-        (vec![0x0001, 9600, 0, 0, 0, 0, 0, 0], ErrorCode::EDIABAS_IFH_0006),
+        (
+            vec![0x0001, 9600, 0, 0, 0, 0, 0, 0],
+            ErrorCode::EDIABAS_IFH_0006,
+        ),
         (vec![0x0000, 0, 0, 0, 0x81], ErrorCode::EDIABAS_IFH_0014),
         (vec![0x0815], ErrorCode::EDIABAS_IFH_0014),
     ] {
@@ -161,7 +179,10 @@ fn bmw_fast_wrong_checksum() {
     let mut resp = sum(&[0x83, 0xF1, 0x12, 0x5A, 0x80, 0x00]);
     *resp.last_mut().unwrap() ^= 0xFF;
     mock.expect(&sum(&[0x82, 0x12, 0xF1, 0x1A, 0x80]), &[(30, &resp)]);
-    assert_eq!(c.obd_trans(&[0x82, 0x12, 0xF1, 0x1A, 0x80]), Err(ErrorCode::EDIABAS_IFH_0009));
+    assert_eq!(
+        c.obd_trans(&[0x82, 0x12, 0xF1, 0x1A, 0x80]),
+        Err(ErrorCode::EDIABAS_IFH_0009)
+    );
 }
 
 #[test]
@@ -180,7 +201,10 @@ fn bmw_fast_timeout() {
     let mut c = core(&mock, BMW_FAST);
     mock.expect(&sum(&[0x82, 0x12, 0xF1, 0x1A, 0x80]), &[]);
     let t0 = mock.now();
-    assert_eq!(c.obd_trans(&[0x82, 0x12, 0xF1, 0x1A, 0x80]), Err(ErrorCode::EDIABAS_IFH_0009));
+    assert_eq!(
+        c.obd_trans(&[0x82, 0x12, 0xF1, 0x1A, 0x80]),
+        Err(ErrorCode::EDIABAS_IFH_0009)
+    );
     let waited = (mock.now() - t0) / 1000;
     // timeout std + AddRecTimeout
     assert!((1220..1240).contains(&waited), "{waited}");
@@ -192,7 +216,10 @@ fn bmw_fast_no_echo() {
     mock.st().echo = false;
     let mut c = core(&mock, BMW_FAST);
     mock.expect(&sum(&[0x82, 0x12, 0xF1, 0x1A, 0x80]), &[]);
-    assert_eq!(c.obd_trans(&[0x82, 0x12, 0xF1, 0x1A, 0x80]), Err(ErrorCode::EDIABAS_IFH_0003));
+    assert_eq!(
+        c.obd_trans(&[0x82, 0x12, 0xF1, 0x1A, 0x80]),
+        Err(ErrorCode::EDIABAS_IFH_0003)
+    );
 }
 
 #[test]
@@ -203,7 +230,10 @@ fn bmw_fast_wrong_echo() {
     c.comm_repeats = 2;
     mock.expect(&sum(&[0x82, 0x12, 0xF1, 0x1A, 0x80]), &[]);
     // IFH_0003 stops the retries
-    assert_eq!(c.obd_trans(&[0x82, 0x12, 0xF1, 0x1A, 0x80]), Err(ErrorCode::EDIABAS_IFH_0003));
+    assert_eq!(
+        c.obd_trans(&[0x82, 0x12, 0xF1, 0x1A, 0x80]),
+        Err(ErrorCode::EDIABAS_IFH_0003)
+    );
     assert_eq!(mock.writes().len(), 1);
 }
 
@@ -234,7 +264,10 @@ fn bmw_fast_nr78_waits_with_nr78_timeout() {
     let pending = sum(&[0x83, 0xF1, 0x12, 0x7F, 0x31, 0x78]);
     let resp = sum(&[0x82, 0xF1, 0x12, 0x71, 0x01]);
     // final response 3 s after NR78: longer than timeout std (1200), shorter than NR78 timeout (5000)
-    mock.expect(&sum(&[0x82, 0x12, 0xF1, 0x31, 0x01]), &[(50, &pending), (3000, &resp)]);
+    mock.expect(
+        &sum(&[0x82, 0x12, 0xF1, 0x31, 0x01]),
+        &[(50, &pending), (3000, &resp)],
+    );
     assert_eq!(c.obd_trans(&[0x82, 0x12, 0xF1, 0x31, 0x01]).unwrap(), resp);
     assert!(c.nr78_dict.is_empty());
 }
@@ -245,9 +278,15 @@ fn bmw_fast_nr78_exceeded_returns_pending() {
     let mut c = core(&mock, BMW_FAST);
     let pending = sum(&[0x83, 0xF1, 0x12, 0x7F, 0x31, 0x78]);
     let p: &[u8] = &pending;
-    mock.expect(&sum(&[0x82, 0x12, 0xF1, 0x31, 0x01]), &[(50, p), (100, p), (100, p), (100, p)]);
+    mock.expect(
+        &sum(&[0x82, 0x12, 0xF1, 0x31, 0x01]),
+        &[(50, p), (100, p), (100, p), (100, p)],
+    );
     // retries 2: 3rd repeat exceeds, the NR78 telegram is the response
-    assert_eq!(c.obd_trans(&[0x82, 0x12, 0xF1, 0x31, 0x01]).unwrap(), pending);
+    assert_eq!(
+        c.obd_trans(&[0x82, 0x12, 0xF1, 0x31, 0x01]).unwrap(),
+        pending
+    );
 }
 
 #[test]
@@ -257,7 +296,10 @@ fn bmw_fast_nr78_timeout() {
     let pending = sum(&[0x83, 0xF1, 0x12, 0x7F, 0x31, 0x78]);
     mock.expect(&sum(&[0x82, 0x12, 0xF1, 0x31, 0x01]), &[(50, &pending)]);
     let t0 = mock.now();
-    assert_eq!(c.obd_trans(&[0x82, 0x12, 0xF1, 0x31, 0x01]), Err(ErrorCode::EDIABAS_IFH_0009));
+    assert_eq!(
+        c.obd_trans(&[0x82, 0x12, 0xF1, 0x31, 0x01]),
+        Err(ErrorCode::EDIABAS_IFH_0009)
+    );
     let waited = (mock.now() - t0) / 1000;
     assert!((5050..5100).contains(&waited), "{waited}");
 }
@@ -278,7 +320,10 @@ fn bmw_fast_retry_after_timeout() {
     c.retry_comm = false;
     mock.expect(&req, &[]);
     mock.expect(&req, &[(20, &resp)]);
-    assert_eq!(c.obd_trans(&[0x82, 0x12, 0xF1, 0x1A, 0x80]), Err(ErrorCode::EDIABAS_IFH_0009));
+    assert_eq!(
+        c.obd_trans(&[0x82, 0x12, 0xF1, 0x1A, 0x80]),
+        Err(ErrorCode::EDIABAS_IFH_0009)
+    );
 }
 
 #[test]
@@ -288,7 +333,10 @@ fn bmw_fast_receive_only_next_telegram() {
     let mut c = core(&mock, BMW_FAST);
     let r1 = sum(&[0x82, 0xF1, 0x12, 0x7E, 0x00]);
     let r2 = sum(&[0x82, 0xF1, 0x40, 0x7E, 0x00]);
-    mock.expect(&sum(&[0xC2, 0xDF, 0xF1, 0x3E, 0x00]), &[(10, &r1), (5, &r2)]);
+    mock.expect(
+        &sum(&[0xC2, 0xDF, 0xF1, 0x3E, 0x00]),
+        &[(10, &r1), (5, &r2)],
+    );
     assert_eq!(c.obd_trans(&[0xC2, 0xDF, 0xF1, 0x3E, 0x00]).unwrap(), r1);
     assert_eq!(c.obd_trans(&[]).unwrap(), r2);
     assert_eq!(c.obd_trans(&[]), Err(ErrorCode::EDIABAS_IFH_0009));
@@ -322,7 +370,10 @@ fn ds2_wrong_checksum() {
     let mut c = core(&mock, DS2);
     let resp = [0x12, 0x05, 0xA0, 0x88, 0x00];
     mock.expect(&xor(&[0x12, 0x04, 0x00]), &[(40, &resp)]);
-    assert_eq!(c.obd_trans(&[0x12, 0x04, 0x00]), Err(ErrorCode::EDIABAS_IFH_0009));
+    assert_eq!(
+        c.obd_trans(&[0x12, 0x04, 0x00]),
+        Err(ErrorCode::EDIABAS_IFH_0009)
+    );
 }
 
 #[test]
@@ -331,11 +382,20 @@ fn ds2_timeout_and_short_tail() {
     let mut c = core(&mock, DS2);
     mock.expect(&xor(&[0x12, 0x04, 0x00]), &[]);
     let t0 = mock.now();
-    assert_eq!(c.obd_trans(&[0x12, 0x04, 0x00]), Err(ErrorCode::EDIABAS_IFH_0009));
+    assert_eq!(
+        c.obd_trans(&[0x12, 0x04, 0x00]),
+        Err(ErrorCode::EDIABAS_IFH_0009)
+    );
     assert!((mock.now() - t0) / 1000 >= 1020);
     // length byte says 6, only 5 bytes arrive
-    mock.expect(&xor(&[0x12, 0x04, 0x00]), &[(40, &[0x12, 0x06, 0xA0, 0x88, 0x3C])]);
-    assert_eq!(c.obd_trans(&[0x12, 0x04, 0x00]), Err(ErrorCode::EDIABAS_IFH_0009));
+    mock.expect(
+        &xor(&[0x12, 0x04, 0x00]),
+        &[(40, &[0x12, 0x06, 0xA0, 0x88, 0x3C])],
+    );
+    assert_eq!(
+        c.obd_trans(&[0x12, 0x04, 0x00]),
+        Err(ErrorCode::EDIABAS_IFH_0009)
+    );
 }
 
 #[test]
@@ -355,8 +415,18 @@ fn ds2_interbyte_time() {
     let resp = xor(&[0x12, 0x05, 0xA0, 0x88]);
     mock.expect(&xor(&[0x12, 0x04, 0x00]), &[(40, &resp)]);
     assert_eq!(c.obd_trans(&[0x12, 0x04, 0x00]).unwrap(), resp);
-    let times: Vec<u64> =
-        mock.st().events.iter().filter_map(|e| if let Ev::Write(_, t) = e { Some(*t) } else { None }).collect();
+    let times: Vec<u64> = mock
+        .st()
+        .events
+        .iter()
+        .filter_map(|e| {
+            if let Ev::Write(_, t) = e {
+                Some(*t)
+            } else {
+                None
+            }
+        })
+        .collect();
     assert_eq!(times.len(), 4);
     // 2 ms + 11 bit at 9600 baud
     for w in times.windows(2) {
@@ -392,7 +462,10 @@ fn kwp2000s_request_response() {
     assert_eq!(mock.st().events[0], Ev::Config(9600, 8, Parity::Even));
     let resp = xor(&[0xB8, 0xF1, 0x12, 0x03, 0x5A, 0x80, 0x01]);
     mock.expect(&xor(&[0xB8, 0x12, 0xF1, 0x02, 0x1A, 0x80]), &[(30, &resp)]);
-    assert_eq!(c.obd_trans(&[0xB8, 0x12, 0xF1, 0x02, 0x1A, 0x80]).unwrap(), resp);
+    assert_eq!(
+        c.obd_trans(&[0xB8, 0x12, 0xF1, 0x02, 0x1A, 0x80]).unwrap(),
+        resp
+    );
 }
 
 #[test]
@@ -401,13 +474,22 @@ fn kwp2000s_nr78_and_checksum() {
     let mut c = core(&mock, KWP2000S);
     let pending = xor(&[0xB8, 0xF1, 0x12, 0x03, 0x7F, 0x31, 0x78]);
     let resp = xor(&[0xB8, 0xF1, 0x12, 0x02, 0x71, 0x01]);
-    mock.expect(&xor(&[0xB8, 0x12, 0xF1, 0x02, 0x31, 0x01]), &[(30, &pending), (2500, &resp)]);
-    assert_eq!(c.obd_trans(&[0xB8, 0x12, 0xF1, 0x02, 0x31, 0x01]).unwrap(), resp);
+    mock.expect(
+        &xor(&[0xB8, 0x12, 0xF1, 0x02, 0x31, 0x01]),
+        &[(30, &pending), (2500, &resp)],
+    );
+    assert_eq!(
+        c.obd_trans(&[0xB8, 0x12, 0xF1, 0x02, 0x31, 0x01]).unwrap(),
+        resp
+    );
 
     let mut bad = resp.clone();
     *bad.last_mut().unwrap() ^= 0x55;
     mock.expect(&xor(&[0xB8, 0x12, 0xF1, 0x02, 0x31, 0x01]), &[(30, &bad)]);
-    assert_eq!(c.obd_trans(&[0xB8, 0x12, 0xF1, 0x02, 0x31, 0x01]), Err(ErrorCode::EDIABAS_IFH_0009));
+    assert_eq!(
+        c.obd_trans(&[0xB8, 0x12, 0xF1, 0x02, 0x31, 0x01]),
+        Err(ErrorCode::EDIABAS_IFH_0009)
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -423,11 +505,25 @@ fn kwp2000_bmw_fast_init_start_comm_and_tester_present() {
     // the setter marks the ECU connected: first request without init fails
     let req = sum(&[0x82, 0x12, 0xF1, 0x1A, 0x80]);
     mock.expect(&req, &[]);
-    assert_eq!(c.trans_kwp2000_bmw(&[0x82, 0x12, 0xF1, 0x1A, 0x80]), Err(ErrorCode::EDIABAS_IFH_0009));
+    assert_eq!(
+        c.trans_kwp2000_bmw(&[0x82, 0x12, 0xF1, 0x1A, 0x80]),
+        Err(ErrorCode::EDIABAS_IFH_0009)
+    );
     assert!(!c.ecu_connected);
 
     // retry: fast init + start communication
-    let t_req = mock.st().events.iter().find_map(|e| if let Ev::Write(_, t) = e { Some(*t) } else { None }).unwrap();
+    let t_req = mock
+        .st()
+        .events
+        .iter()
+        .find_map(|e| {
+            if let Ev::Write(_, t) = e {
+                Some(*t)
+            } else {
+                None
+            }
+        })
+        .unwrap();
     mock.st().events.clear();
     let sc_resp = sum(&[0x83, 0xF1, 0x12, 0xC1, 0xEF, 0x8F]);
     let resp = sum(&[0x83, 0xF1, 0x12, 0x5A, 0x80, 0x00]);
@@ -438,18 +534,26 @@ fn kwp2000_bmw_fast_init_start_comm_and_tester_present() {
 
     let ev = mock.st().events.clone();
     // waits timeout std since the last communication
-    let Ev::Break(true, t0) = ev[0] else { panic!("{ev:?}") };
+    let Ev::Break(true, t0) = ev[0] else {
+        panic!("{ev:?}")
+    };
     assert!(t0 - t_req >= 1_000_000, "{t0} {t_req}");
     assert_eq!(ev[1], Ev::Break(false, t0 + 25_000));
     assert_eq!(ev[2], Ev::Purge(t0 + 50_000));
-    assert_eq!(ev[3], Ev::Write(sum(&[0x81, 0x12, 0xF1, 0x81]), t0 + 50_000));
+    assert_eq!(
+        ev[3],
+        Ev::Write(sum(&[0x81, 0x12, 0xF1, 0x81]), t0 + 50_000)
+    );
 
     // tester present after 2000 ms idle
     c.thread_command = ThreadCommand::IdleTransmit;
     c.idle_transmit();
     assert_eq!(mock.writes().len(), 2);
     mock.st().now += 2_001_000;
-    mock.expect(&sum(&[0x81, 0x12, 0xF1, 0x3E]), &[(20, &sum(&[0x81, 0xF1, 0x12, 0x7E]))]);
+    mock.expect(
+        &sum(&[0x81, 0x12, 0xF1, 0x3E]),
+        &[(20, &sum(&[0x81, 0xF1, 0x12, 0x7E]))],
+    );
     c.idle_transmit();
     assert_eq!(mock.writes().len(), 3);
     assert_eq!(c.thread_command, ThreadCommand::IdleTransmit);
@@ -469,7 +573,10 @@ fn kwp2000_bmw_start_comm_failure() {
     let mut c = core(&mock, &kwp2000_bmw_pars());
     c.ecu_connected = false;
     mock.expect(&sum(&[0x81, 0x12, 0xF1, 0x81]), &[]);
-    assert_eq!(c.trans_kwp2000_bmw(&[0x82, 0x12, 0xF1, 0x1A, 0x80]), Err(ErrorCode::EDIABAS_IFH_0009));
+    assert_eq!(
+        c.trans_kwp2000_bmw(&[0x82, 0x12, 0xF1, 0x1A, 0x80]),
+        Err(ErrorCode::EDIABAS_IFH_0009)
+    );
     assert!(!c.ecu_connected);
     assert_eq!(mock.writes().len(), 1);
 }
@@ -517,10 +624,25 @@ fn kwp2000_iso_5baud_init_and_request() {
     assert!(mock.st().unexpected.is_empty());
 
     // address 0x33 LSB first: start bit, 1 1 0 0 1 1 0 0, stop bit
-    let breaks: Vec<(bool, u64)> =
-        mock.st().events.iter().filter_map(|e| if let Ev::Break(on, t) = e { Some((*on, *t)) } else { None }).collect();
+    let breaks: Vec<(bool, u64)> = mock
+        .st()
+        .events
+        .iter()
+        .filter_map(|e| {
+            if let Ev::Break(on, t) = e {
+                Some((*on, *t))
+            } else {
+                None
+            }
+        })
+        .collect();
     let bits: Vec<bool> = breaks.iter().map(|b| b.0).collect();
-    assert_eq!(bits, vec![true, false, false, true, true, false, false, true, true, false]);
+    assert_eq!(
+        bits,
+        vec![
+            true, false, false, true, true, false, false, true, true, false
+        ]
+    );
     for (i, (_, t)) in breaks.iter().enumerate() {
         assert_eq!(*t - breaks[0].1, i as u64 * 200_000);
     }
@@ -535,13 +657,19 @@ fn kwp2000_iso_wrong_wake_address_and_finish() {
     mock.rx_at(t0 + 2_050_000, &[0x55]);
     mock.rx_at(t0 + 2_060_000, &[0x08, 0x8F]);
     mock.expect(&[0x70], &[(30, &[0xCD])]);
-    assert_eq!(c.trans_kwp2000_iso(&[0x1A, 0x80]), Err(ErrorCode::EDIABAS_IFH_0009));
+    assert_eq!(
+        c.trans_kwp2000_iso(&[0x1A, 0x80]),
+        Err(ErrorCode::EDIABAS_IFH_0009)
+    );
     assert!(!c.ecu_connected);
 
     // connected ECU: finish sends stop communication
     c.ecu_connected = true;
     c.kwp_mode = KwpMode::Kwp2000;
-    mock.expect(&sum(&[0x81, 0x33, 0xF1, 0x82]), &[(20, &sum(&[0x81, 0xF1, 0x33, 0xC2]))]);
+    mock.expect(
+        &sum(&[0x81, 0x33, 0xF1, 0x82]),
+        &[(20, &sum(&[0x81, 0xF1, 0x33, 0xC2]))],
+    );
     assert_eq!(c.obd_finish_trans(), Ok(()));
     assert!(!c.ecu_connected);
 }
@@ -550,7 +678,10 @@ fn kwp2000_iso_wrong_wake_address_and_finish() {
 fn kwp2000_iso_no_wake_response() {
     let mock = Mock::new();
     let mut c = iso_core(&mock);
-    assert_eq!(c.trans_kwp2000_iso(&[0x1A, 0x80]), Err(ErrorCode::EDIABAS_IFH_0009));
+    assert_eq!(
+        c.trans_kwp2000_iso(&[0x1A, 0x80]),
+        Err(ErrorCode::EDIABAS_IFH_0009)
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -559,7 +690,10 @@ fn kwp2000_iso_no_wake_response() {
 
 fn iface(mock: &Mock) -> ObdInterface {
     let m = mock.clone();
-    let mut i = ObdInterface::with_opener("mock", Box::new(move |_| Ok(Box::new(m.clone()) as Box<dyn SerialLink>)));
+    let mut i = ObdInterface::with_opener(
+        "mock",
+        Box::new(move |_| Ok(Box::new(m.clone()) as Box<dyn SerialLink>)),
+    );
     i.set_use_comm_thread(false);
     i
 }
@@ -577,8 +711,14 @@ fn interface_connect_transmit_disconnect() {
     assert_eq!(i.comm_parameter(), BMW_FAST);
     let resp = sum(&[0x83, 0xF1, 0x12, 0x5A, 0x80, 0x00]);
     mock.expect(&sum(&[0x82, 0x12, 0xF1, 0x1A, 0x80]), &[(30, &resp)]);
-    assert_eq!(i.transmit_data(&[0x82, 0x12, 0xF1, 0x1A, 0x80]).unwrap(), resp);
-    assert_eq!(i.transmit_data(&vec![0; 0x801]), Err(ErrorCode::EDIABAS_IFH_0031));
+    assert_eq!(
+        i.transmit_data(&[0x82, 0x12, 0xF1, 0x1A, 0x80]).unwrap(),
+        resp
+    );
+    assert_eq!(
+        i.transmit_data(&vec![0; 0x801]),
+        Err(ErrorCode::EDIABAS_IFH_0031)
+    );
     assert_eq!(i.state().unwrap(), vec![0x00, 0x00]);
     mock.st().dsr = false;
     assert_eq!(i.ignition_voltage().unwrap(), 0);
@@ -618,15 +758,24 @@ fn interface_ds2_answer_len_and_frequent() {
 fn interface_with_comm_thread_sends_tester_present() {
     let mock = Mock::new();
     let m = mock.clone();
-    let mut i = ObdInterface::with_opener("mock", Box::new(move |_| Ok(Box::new(m.clone()) as Box<dyn SerialLink>)));
+    let mut i = ObdInterface::with_opener(
+        "mock",
+        Box::new(move |_| Ok(Box::new(m.clone()) as Box<dyn SerialLink>)),
+    );
     i.interface_connect().unwrap();
     i.set_comm_parameter(kwp2000_bmw_pars()).unwrap();
     let req = sum(&[0x82, 0x12, 0xF1, 0x1A, 0x80]);
     let resp = sum(&[0x83, 0xF1, 0x12, 0x5A, 0x80, 0x00]);
     mock.expect(&req, &[(30, &resp)]);
-    assert_eq!(i.transmit_data(&[0x82, 0x12, 0xF1, 0x1A, 0x80]).unwrap(), resp);
+    assert_eq!(
+        i.transmit_data(&[0x82, 0x12, 0xF1, 0x1A, 0x80]).unwrap(),
+        resp
+    );
     // simulated time jumps past the tester present time; the thread sends it
-    mock.expect(&sum(&[0x81, 0x12, 0xF1, 0x3E]), &[(20, &sum(&[0x81, 0xF1, 0x12, 0x7E]))]);
+    mock.expect(
+        &sum(&[0x81, 0x12, 0xF1, 0x3E]),
+        &[(20, &sum(&[0x81, 0xF1, 0x12, 0x7E]))],
+    );
     mock.st().now += 2_001_000;
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
     while mock.writes().len() < 2 && std::time::Instant::now() < deadline {

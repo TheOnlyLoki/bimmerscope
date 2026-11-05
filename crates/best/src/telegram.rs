@@ -42,8 +42,14 @@ mod tests {
 
     #[test]
     fn bmw_fast_lengths() {
-        assert_eq!(tel_length_bmw_fast(&[0x82, 0x12, 0xF1, 0x1A, 0x80, 0x00]), Some(5));
-        assert_eq!(tel_length_bmw_fast(&[0x80, 0x12, 0xF1, 0x02, 0x1A, 0x80, 0x00]), Some(6));
+        assert_eq!(
+            tel_length_bmw_fast(&[0x82, 0x12, 0xF1, 0x1A, 0x80, 0x00]),
+            Some(5)
+        );
+        assert_eq!(
+            tel_length_bmw_fast(&[0x80, 0x12, 0xF1, 0x02, 0x1A, 0x80, 0x00]),
+            Some(6)
+        );
         let mut long = vec![0x80, 0x12, 0xF1, 0x00, 0x01, 0x00];
         assert_eq!(tel_length_bmw_fast(&long), Some(6));
         long.resize(0x200, 0);
@@ -53,8 +59,14 @@ mod tests {
 
     #[test]
     fn checksums() {
-        assert_eq!(calc_checksum_bmw_fast(&[0x82, 0x12, 0xF1, 0x1A, 0x80], 5), 0x1F);
+        assert_eq!(
+            calc_checksum_bmw_fast(&[0x82, 0x12, 0xF1, 0x1A, 0x80], 5),
+            0x1F
+        );
         assert_eq!(calc_checksum_xor(&[0x12, 0x04, 0x00], 3), 0x16);
-        assert_eq!(tel_length_kwp2000s(&[0xB8, 0x12, 0xF1, 0x02, 0x1A, 0x80]), 6);
+        assert_eq!(
+            tel_length_kwp2000s(&[0xB8, 0x12, 0xF1, 0x02, 0x1A, 0x80]),
+            6
+        );
     }
 }

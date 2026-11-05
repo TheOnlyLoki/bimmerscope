@@ -11,7 +11,11 @@ fn parse_all_ecu_files() {
     let mut count = 0;
     for entry in std::fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();
-        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_ascii_lowercase();
         if ext != "prg" && ext != "grp" {
             continue;
         }
@@ -20,6 +24,11 @@ fn parse_all_ecu_files() {
             failures.push(format!("{}: {e}", path.display()));
         }
     }
-    assert!(failures.is_empty(), "{} of {count} failed:\n{}", failures.len(), failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "{} of {count} failed:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
     eprintln!("parsed {count} files");
 }

@@ -18,11 +18,24 @@ fn expect_one(line: &str) -> String {
 
 #[test]
 fn oracle_examples() {
-    assert_eq!(one(int(ResultType::W, "SAETZE", 1)), expect_one("SAETZE: W: 1 0x0001"));
-    assert_eq!(one(int(ResultType::I, "UBATTCURRENT", -1)), expect_one("UBATTCURRENT: I: -1 0xFFFF"));
-    assert_eq!(one(int(ResultType::L, "ID_SG_ADR", 18)), expect_one("ID_SG_ADR: L: 18 0x00000012"));
     assert_eq!(
-        one(ResultData::new(ResultType::S, "ECU", ResultValue::Str("JBBF".into()))),
+        one(int(ResultType::W, "SAETZE", 1)),
+        expect_one("SAETZE: W: 1 0x0001")
+    );
+    assert_eq!(
+        one(int(ResultType::I, "UBATTCURRENT", -1)),
+        expect_one("UBATTCURRENT: I: -1 0xFFFF")
+    );
+    assert_eq!(
+        one(int(ResultType::L, "ID_SG_ADR", 18)),
+        expect_one("ID_SG_ADR: L: 18 0x00000012")
+    );
+    assert_eq!(
+        one(ResultData::new(
+            ResultType::S,
+            "ECU",
+            ResultValue::Str("JBBF".into())
+        )),
         expect_one("ECU: JBBF")
     );
     assert_eq!(
@@ -37,45 +50,84 @@ fn oracle_examples() {
 
 #[test]
 fn byte_type() {
-    assert_eq!(one(int(ResultType::B, "X", 255)), expect_one("X: B: 255 0xFF"));
+    assert_eq!(
+        one(int(ResultType::B, "X", 255)),
+        expect_one("X: B: 255 0xFF")
+    );
     assert_eq!(one(int(ResultType::B, "X", 1)), expect_one("X: B: 1 0x01"));
     // Hex masked to 8 bits, decimal stays signed.
-    assert_eq!(one(int(ResultType::B, "X", -1)), expect_one("X: B: -1 0xFF"));
+    assert_eq!(
+        one(int(ResultType::B, "X", -1)),
+        expect_one("X: B: -1 0xFF")
+    );
 }
 
 #[test]
 fn char_type() {
-    assert_eq!(one(int(ResultType::C, "X", 65)), expect_one("X: C: 65 0x41"));
-    assert_eq!(one(int(ResultType::C, "X", -2)), expect_one("X: C: -2 0xFE"));
+    assert_eq!(
+        one(int(ResultType::C, "X", 65)),
+        expect_one("X: C: 65 0x41")
+    );
+    assert_eq!(
+        one(int(ResultType::C, "X", -2)),
+        expect_one("X: C: -2 0xFE")
+    );
 }
 
 #[test]
 fn word_type() {
-    assert_eq!(one(int(ResultType::W, "X", 0x1234)), expect_one("X: W: 4660 0x1234"));
-    assert_eq!(one(int(ResultType::W, "X", -1)), expect_one("X: W: -1 0xFFFF"));
+    assert_eq!(
+        one(int(ResultType::W, "X", 0x1234)),
+        expect_one("X: W: 4660 0x1234")
+    );
+    assert_eq!(
+        one(int(ResultType::W, "X", -1)),
+        expect_one("X: W: -1 0xFFFF")
+    );
 }
 
 #[test]
 fn signed_int_type() {
-    assert_eq!(one(int(ResultType::I, "X", -2)), expect_one("X: I: -2 0xFFFE"));
-    assert_eq!(one(int(ResultType::I, "X", 300)), expect_one("X: I: 300 0x012C"));
+    assert_eq!(
+        one(int(ResultType::I, "X", -2)),
+        expect_one("X: I: -2 0xFFFE")
+    );
+    assert_eq!(
+        one(int(ResultType::I, "X", 300)),
+        expect_one("X: I: 300 0x012C")
+    );
 }
 
 #[test]
 fn dword_type() {
-    assert_eq!(one(int(ResultType::D, "X", 4_000_000_000)), expect_one("X: D: 4000000000 0xEE6B2800"));
-    assert_eq!(one(int(ResultType::D, "X", -1)), expect_one("X: D: -1 0xFFFFFFFF"));
+    assert_eq!(
+        one(int(ResultType::D, "X", 4_000_000_000)),
+        expect_one("X: D: 4000000000 0xEE6B2800")
+    );
+    assert_eq!(
+        one(int(ResultType::D, "X", -1)),
+        expect_one("X: D: -1 0xFFFFFFFF")
+    );
 }
 
 #[test]
 fn long_type() {
-    assert_eq!(one(int(ResultType::L, "X", -1)), expect_one("X: L: -1 0xFFFFFFFF"));
-    assert_eq!(one(int(ResultType::L, "X", 0x7FFF_FFFF)), expect_one("X: L: 2147483647 0x7FFFFFFF"));
+    assert_eq!(
+        one(int(ResultType::L, "X", -1)),
+        expect_one("X: L: -1 0xFFFFFFFF")
+    );
+    assert_eq!(
+        one(int(ResultType::L, "X", 0x7FFF_FFFF)),
+        expect_one("X: L: 2147483647 0x7FFFFFFF")
+    );
 }
 
 #[test]
 fn qword_type_prints_qw_label() {
-    assert_eq!(one(int(ResultType::Q, "X", 1)), expect_one("X: QW: 1 0x0000000000000001"));
+    assert_eq!(
+        one(int(ResultType::Q, "X", 1)),
+        expect_one("X: QW: 1 0x0000000000000001")
+    );
     assert_eq!(
         one(int(ResultType::Q, "X", -1)),
         expect_one("X: QW: -1 0xFFFFFFFFFFFFFFFF")
@@ -85,18 +137,32 @@ fn qword_type_prints_qw_label() {
 #[test]
 fn signed_qword_type_prints_l_label() {
     // Oracle quirk: LL uses the "L:" label with 64-bit hex.
-    assert_eq!(one(int(ResultType::LL, "X", -2)), expect_one("X: L: -2 0xFFFFFFFFFFFFFFFE"));
-    assert_eq!(one(int(ResultType::LL, "X", 3)), expect_one("X: L: 3 0x0000000000000003"));
+    assert_eq!(
+        one(int(ResultType::LL, "X", -2)),
+        expect_one("X: L: -2 0xFFFFFFFFFFFFFFFE")
+    );
+    assert_eq!(
+        one(int(ResultType::LL, "X", 3)),
+        expect_one("X: L: 3 0x0000000000000003")
+    );
 }
 
 #[test]
 fn float_type() {
     assert_eq!(
-        one(ResultData::new(ResultType::R, "UBATT", ResultValue::Float(12.5))),
+        one(ResultData::new(
+            ResultType::R,
+            "UBATT",
+            ResultValue::Float(12.5)
+        )),
         expect_one("UBATT: R: 12.500000")
     );
     assert_eq!(
-        one(ResultData::new(ResultType::R, "X", ResultValue::Float(-3.25))),
+        one(ResultData::new(
+            ResultType::R,
+            "X",
+            ResultValue::Float(-3.25)
+        )),
         expect_one("X: R: -3.250000")
     );
     assert_eq!(
@@ -124,15 +190,27 @@ fn integer_with_non_integer_type_prints_question_mark() {
 #[test]
 fn string_is_raw_and_empty_bytes_leave_trailing_space() {
     assert_eq!(
-        one(ResultData::new(ResultType::S, "X", ResultValue::Str(String::new()))),
+        one(ResultData::new(
+            ResultType::S,
+            "X",
+            ResultValue::Str(String::new())
+        )),
         expect_one("X: ")
     );
     assert_eq!(
-        one(ResultData::new(ResultType::Y, "X", ResultValue::Bytes(vec![]))),
+        one(ResultData::new(
+            ResultType::Y,
+            "X",
+            ResultValue::Bytes(vec![])
+        )),
         expect_one("X: ")
     );
     assert_eq!(
-        one(ResultData::new(ResultType::Y, "X", ResultValue::Bytes(vec![0x0A]))),
+        one(ResultData::new(
+            ResultType::Y,
+            "X",
+            ResultValue::Bytes(vec![0x0A])
+        )),
         expect_one("X: 0A ")
     );
 }
@@ -175,5 +253,8 @@ fn empty_list_prints_only_blank_line() {
 
 #[test]
 fn empty_set_prints_header_and_blank_line() {
-    assert_eq!(format_result_sets(&[ResultSet::default()]), "DATASET: 0\n\n");
+    assert_eq!(
+        format_result_sets(&[ResultSet::default()]),
+        "DATASET: 0\n\n"
+    );
 }

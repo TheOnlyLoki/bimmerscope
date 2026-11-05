@@ -21,8 +21,8 @@
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 
-use crate::iface::{IfResult, Interface};
 use crate::ErrorCode;
+use crate::iface::{IfResult, Interface};
 use crate::telegram::{TRANS_BUFFER_SIZE, calc_checksum_bmw_fast, tel_length_bmw_fast};
 
 pub const DEFAULT_BATTERY_VOLT: i32 = 12000;
@@ -54,7 +54,10 @@ impl IniFile {
     /// C#: `IniFile.Refresh`. Only the first occurrence of a section or key
     /// is loaded. Lines without `=` (comments) are ignored.
     fn parse(text: &str) -> IniFile {
-        let mut ini = IniFile { sections: Vec::new(), index: HashMap::new() };
+        let mut ini = IniFile {
+            sections: Vec::new(),
+            index: HashMap::new(),
+        };
         let mut current: Option<usize> = None;
         for line in text.lines() {
             let s = line.trim();
@@ -65,7 +68,11 @@ impl IniFile {
                 } else {
                     ini.index.insert(lower, ini.sections.len());
                     current = Some(ini.sections.len());
-                    ini.sections.push(IniSection { name: name.to_string(), keys: Vec::new(), index: HashMap::new() });
+                    ini.sections.push(IniSection {
+                        name: name.to_string(),
+                        keys: Vec::new(),
+                        index: HashMap::new(),
+                    });
                 }
             } else if let (Some(idx), Some((key, value))) = (current, parse_key_value_pair(s)) {
                 let section = &mut ini.sections[idx];
@@ -80,12 +87,17 @@ impl IniFile {
     }
 
     fn section(&self, name: &str) -> Option<&IniSection> {
-        self.index.get(&name.to_lowercase()).map(|&i| &self.sections[i])
+        self.index
+            .get(&name.to_lowercase())
+            .map(|&i| &self.sections[i])
     }
 
     fn get_value(&self, section: &str, key: &str) -> Option<&str> {
         let section = self.section(section)?;
-        section.index.get(&key.to_lowercase()).map(|&i| section.keys[i].1.as_str())
+        section
+            .index
+            .get(&key.to_lowercase())
+            .map(|&i| section.keys[i].1.as_str())
     }
 
     /// C#: `GetValue(section, key, int default)`; unparsable gives the default.
@@ -141,7 +153,11 @@ fn parse_hex(s: &str, max: u64) -> Option<u64> {
     if digits.len() > 16 {
         return None;
     }
-    let v = if digits.is_empty() { 0 } else { u64::from_str_radix(digits, 16).ok()? };
+    let v = if digits.is_empty() {
+        0
+    } else {
+        u64::from_str_radix(digits, 16).ok()?
+    };
     if v > max {
         return None;
     }
@@ -210,8 +226,17 @@ struct ResponseInfo {
 }
 
 impl ResponseInfo {
-    fn new(request_data: Vec<DataItem>, response_data: Vec<DataItem>, ecu_addr: Option<i32>) -> Self {
-        ResponseInfo { request_data, response_data_list: vec![response_data], ecu_addr, response_index: 0 }
+    fn new(
+        request_data: Vec<DataItem>,
+        response_data: Vec<DataItem>,
+        ecu_addr: Option<i32>,
+    ) -> Self {
+        ResponseInfo {
+            request_data,
+            response_data_list: vec![response_data],
+            ecu_addr,
+            response_index: 0,
+        }
     }
 
     /// Returns the next response and advances the cycling index.
@@ -251,7 +276,9 @@ impl SimFile {
         let bytes = std::fs::read(path)?;
         // C# StreamReader: UTF-8, BOM stripped.
         let text = String::from_utf8_lossy(&bytes);
-        Ok(SimFile::parse(text.strip_prefix('\u{FEFF}').unwrap_or(&text)))
+        Ok(SimFile::parse(
+            text.strip_prefix('\u{FEFF}').unwrap_or(&text),
+        ))
     }
 
     /// Parses sim file text (C#: constructor + `ParseIniFile`).
@@ -294,7 +321,12 @@ impl SimFile {
 
     /// C#: `GetResponse`. Pass 0 tries exact entries only; pass 1 also
     /// entries with wildcards, operators or variable length.
-    pub fn get_response(&mut self, request: &[u8], sim_ecu_addr: Option<i32>, sim_wake_addr: Option<i32>) -> Option<Vec<u8>> {
+    pub fn get_response(
+        &mut self,
+        request: &[u8],
+        sim_ecu_addr: Option<i32>,
+        sim_wake_addr: Option<i32>,
+    ) -> Option<Vec<u8>> {
         let ecu_addr = sim_wake_addr.or(sim_ecu_addr);
         for iteration in 0..2 {
             for info in &mut self.response_infos {
@@ -310,16 +342,31 @@ impl SimFile {
                 }
                 if iteration == 0 {
                     let variable_data = var_length
-                        || info.request_data.iter().any(|d| d.data_mask.is_some() || d.operator.is_some());
+                        || info
+                            .request_data
+                            .iter()
+                            .any(|d| d.data_mask.is_some() || d.operator.is_some());
                     if variable_data {
                         continue;
                     }
                 }
 
-                let Some(request_info_list) = convert_data(&info.request_data, None, Some(request), sim_ecu_addr, sim_wake_addr) else {
+                let Some(request_info_list) = convert_data(
+                    &info.request_data,
+                    None,
+                    Some(request),
+                    sim_ecu_addr,
+                    sim_wake_addr,
+                ) else {
                     continue;
                 };
-                let Some(request_data_list) = convert_data(&info.request_data, Some(request), Some(request), sim_ecu_addr, sim_wake_addr) else {
+                let Some(request_data_list) = convert_data(
+                    &info.request_data,
+                    Some(request),
+                    Some(request),
+                    sim_ecu_addr,
+                    sim_wake_addr,
+                ) else {
                     continue;
                 };
                 if request_info_list != request_data_list {
@@ -335,9 +382,16 @@ impl SimFile {
 
     /// C#: `GetKeyBytes`. Returns the next key bytes of the first entry with
     /// a matching address.
-    pub fn get_key_bytes(&mut self, sim_ecu_addr: Option<i32>, sim_wake_addr: Option<i32>) -> Option<Vec<u8>> {
+    pub fn get_key_bytes(
+        &mut self,
+        sim_ecu_addr: Option<i32>,
+        sim_wake_addr: Option<i32>,
+    ) -> Option<Vec<u8>> {
         let ecu_addr = sim_wake_addr.or(sim_ecu_addr);
-        let info = self.key_bytes_infos.iter_mut().find(|i| i.ecu_addr.unwrap_or(-1) == ecu_addr.unwrap_or(-1))?;
+        let info = self
+            .key_bytes_infos
+            .iter_mut()
+            .find(|i| i.ecu_addr.unwrap_or(-1) == ecu_addr.unwrap_or(-1))?;
         let response = info.next_response()?;
         convert_data(&response, None, None, sim_ecu_addr, sim_wake_addr)
     }
@@ -348,7 +402,11 @@ impl SimFile {
             let Some(prefix) = strip_suffix_ci(&section.name, SECTION_REQUEST) else {
                 continue;
             };
-            let ecu_addr = if prefix.is_empty() { None } else { parse_section_ecu_addr(prefix) };
+            let ecu_addr = if prefix.is_empty() {
+                None
+            } else {
+                parse_section_ecu_addr(prefix)
+            };
             let response_section = format!("{prefix}{SECTION_RESPONSE}");
             for (key, value) in &section.keys {
                 let request_value = value.trim();
@@ -370,11 +428,18 @@ impl SimFile {
                 let matched = self.response_infos.iter_mut().find(|info| {
                     info.ecu_addr.unwrap_or(-1) == ecu_addr.unwrap_or(-1)
                         && info.request_data.len() == request_bytes.len()
-                        && request_bytes.iter().zip(&info.request_data).all(|(a, b)| a.same(b))
+                        && request_bytes
+                            .iter()
+                            .zip(&info.request_data)
+                            .all(|(a, b)| a.same(b))
                 });
                 match matched {
                     Some(info) => info.response_data_list.push(response_bytes),
-                    None => self.response_infos.push(ResponseInfo::new(request_bytes, response_bytes, ecu_addr)),
+                    None => self.response_infos.push(ResponseInfo::new(
+                        request_bytes,
+                        response_bytes,
+                        ecu_addr,
+                    )),
                 }
             }
         }
@@ -383,7 +448,11 @@ impl SimFile {
             let Some(prefix) = strip_suffix_ci(&section.name, SECTION_KEYBYTES) else {
                 continue;
             };
-            let ecu_addr = if prefix.is_empty() { None } else { parse_section_ecu_addr(prefix) };
+            let ecu_addr = if prefix.is_empty() {
+                None
+            } else {
+                parse_section_ecu_addr(prefix)
+            };
             for (_, value) in &section.keys {
                 let key_bytes_value = value.trim();
                 if key_bytes_value.is_empty() {
@@ -392,10 +461,17 @@ impl SimFile {
                 let Some(key_bytes) = parse_hex_string(key_bytes_value, true) else {
                     return false;
                 };
-                let matched = self.key_bytes_infos.iter_mut().find(|i| i.ecu_addr.unwrap_or(-1) == ecu_addr.unwrap_or(-1));
+                let matched = self
+                    .key_bytes_infos
+                    .iter_mut()
+                    .find(|i| i.ecu_addr.unwrap_or(-1) == ecu_addr.unwrap_or(-1));
                 match matched {
                     Some(info) => info.response_data_list.push(key_bytes),
-                    None => self.key_bytes_infos.push(ResponseInfo::new(Vec::new(), key_bytes, ecu_addr)),
+                    None => self.key_bytes_infos.push(ResponseInfo::new(
+                        Vec::new(),
+                        key_bytes,
+                        ecu_addr,
+                    )),
                 }
             }
         }
@@ -562,7 +638,10 @@ fn convert_data(
                     }
                     OperatorDataType::Checksum => {
                         let limit = operator_index as usize;
-                        let bytes = out.iter().enumerate().take_while(|(i, _)| limit == 0 || *i < limit);
+                        let bytes = out
+                            .iter()
+                            .enumerate()
+                            .take_while(|(i, _)| limit == 0 || *i < limit);
                         match operator_type? {
                             OperatorType::Xor => {
                                 for (_, b) in bytes {
@@ -610,7 +689,6 @@ fn convert_data(
 // ---------------------------------------------------------------------------
 // SimInterface (C#: EdInterfaceObd in simulation mode)
 // ---------------------------------------------------------------------------
-
 
 /// C#: `ParTransmitFunc`. Only BMW-FAST changes the simulation behaviour.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -802,7 +880,11 @@ impl SimInterface {
 
     /// C#: `TransmitSimulationData`. `Err` = C# set an error code, `Ok(None)` =
     /// C# returned false without an error.
-    fn transmit_simulation_data(&mut self, send: &[u8], bmw_fast: bool) -> IfResult<Option<Vec<u8>>> {
+    fn transmit_simulation_data(
+        &mut self,
+        send: &[u8],
+        bmw_fast: bool,
+    ) -> IfResult<Option<Vec<u8>>> {
         if !self.connected {
             return Err(ErrorCode::EDIABAS_IFH_0056);
         }
@@ -827,7 +909,9 @@ impl SimInterface {
                 // Including checksum.
                 let mut response: Vec<u8> = rec[..tel_length + 1].to_vec();
                 // Drop "busy" / "response pending" negative responses.
-                let filter = response.len() == 7 && response[3] == 0x7F && matches!(response[5], 0x22 | 0x23 | 0x78);
+                let filter = response.len() == 7
+                    && response[3] == 0x7F
+                    && matches!(response[5], 0x22 | 0x23 | 0x78);
                 if !filter {
                     let last = response.len() - 1;
                     response[last] = calc_checksum_bmw_fast(&response, tel_length);
@@ -847,7 +931,11 @@ impl SimInterface {
     fn transmit_simulation_internal(&mut self, send: &[u8]) -> Option<Vec<u8>> {
         let (ecu, wake) = (self.sim_ecu_addr, self.sim_wake_addr);
         let has_addr = ecu.is_some() || wake.is_some();
-        for sim in self.sgbd_sim.iter_mut().chain(std::iter::once(&mut self.sim)) {
+        for sim in self
+            .sgbd_sim
+            .iter_mut()
+            .chain(std::iter::once(&mut self.sim))
+        {
             let mut response = sim.get_response(send, ecu, wake);
             if response.is_none() && has_addr {
                 response = sim.get_response(send, None, None);
@@ -866,7 +954,11 @@ impl SimInterface {
         }
         let (ecu, wake) = (self.sim_ecu_addr, self.sim_wake_addr);
         let has_addr = ecu.is_some() || wake.is_some();
-        for sim in self.sgbd_sim.iter_mut().chain(std::iter::once(&mut self.sim)) {
+        for sim in self
+            .sgbd_sim
+            .iter_mut()
+            .chain(std::iter::once(&mut self.sim))
+        {
             let mut key_bytes = sim.get_key_bytes(None, None);
             if key_bytes.is_none() && has_addr {
                 key_bytes = sim.get_key_bytes(ecu, wake);
@@ -1024,7 +1116,14 @@ impl Interface for SimInterface {
         if !self.connected {
             return Err(ErrorCode::EDIABAS_IFH_0056);
         }
-        Ok(vec![0x00, if self.sim.ignition_volt > 0 { 0x00 } else { 0x30 }])
+        Ok(vec![
+            0x00,
+            if self.sim.ignition_volt > 0 {
+                0x00
+            } else {
+                0x30
+            },
+        ])
     }
 
     fn loop_test(&mut self) -> IfResult<u32> {
@@ -1120,7 +1219,8 @@ b=02,8A
     fn bmw_fast() -> SimInterface {
         let mut s = SimInterface::new(SimFile::parse(SIM));
         s.interface_connect().unwrap();
-        s.set_comm_parameter(vec![0x010F, 115200, 1000, 20, 20, 3, 5000]).unwrap();
+        s.set_comm_parameter(vec![0x010F, 115200, 1000, 20, 20, 3, 5000])
+            .unwrap();
         s
     }
 
@@ -1178,7 +1278,8 @@ b=02,8A
         assert!(checksum_ok(&r1) && checksum_ok(&r2));
         // Reconnect resets the index.
         s.interface_connect().unwrap();
-        s.set_comm_parameter(vec![0x010F, 115200, 1000, 20, 20, 3, 5000]).unwrap();
+        s.set_comm_parameter(vec![0x010F, 115200, 1000, 20, 20, 3, 5000])
+            .unwrap();
         assert_eq!(s.transmit_data(&req).unwrap()[5], 0x01);
     }
 
@@ -1186,21 +1287,37 @@ b=02,8A
     fn exact_match_wins_over_wildcard() {
         let mut s = bmw_fast();
         // 20 00 matches both `exact` and `X0,0X`; exact entries are tried first.
-        assert_eq!(s.transmit_data(&[0x83, 0x40, 0xF1, 0x22, 0x20, 0x00]).unwrap()[4], 0xBB);
-        assert_eq!(s.transmit_data(&[0x83, 0x40, 0xF1, 0x22, 0x30, 0x05]).unwrap()[4], 0xAA);
+        assert_eq!(
+            s.transmit_data(&[0x83, 0x40, 0xF1, 0x22, 0x20, 0x00])
+                .unwrap()[4],
+            0xBB
+        );
+        assert_eq!(
+            s.transmit_data(&[0x83, 0x40, 0xF1, 0x22, 0x30, 0x05])
+                .unwrap()[4],
+            0xAA
+        );
         // Low nibble of byte 4 must be 0.
-        assert_eq!(s.transmit_data(&[0x83, 0x40, 0xF1, 0x22, 0x31, 0x00]), Err(ErrorCode::EDIABAS_IFH_0009));
+        assert_eq!(
+            s.transmit_data(&[0x83, 0x40, 0xF1, 0x22, 0x31, 0x00]),
+            Err(ErrorCode::EDIABAS_IFH_0009)
+        );
     }
 
     #[test]
     fn variable_length_and_request_operand() {
         let mut s = bmw_fast();
-        let r = s.transmit_data(&[0x83, 0x40, 0xF1, 0x31, 0x5A, 0x01]).unwrap();
+        let r = s
+            .transmit_data(&[0x83, 0x40, 0xF1, 0x31, 0x5A, 0x01])
+            .unwrap();
         assert_eq!(&r[..5], &[0x82, 0xF1, 0x40, 0x71, 0x5A]);
         let r = s.transmit_data(&[0x82, 0x40, 0xF1, 0x21, 0x07]).unwrap();
         assert_eq!(&r[..5], &[0x82, 0xF1, 0x40, 0x61, 0x07]);
         // Shorter than the fixed part: no match.
-        assert_eq!(s.transmit_data(&[0x83, 0x40, 0xF1]), Err(ErrorCode::EDIABAS_IFH_0009));
+        assert_eq!(
+            s.transmit_data(&[0x83, 0x40, 0xF1]),
+            Err(ErrorCode::EDIABAS_IFH_0009)
+        );
     }
 
     #[test]
@@ -1231,7 +1348,8 @@ b=02,8A
     fn ds2_xor_checksum_operator() {
         let mut s = SimInterface::new(SimFile::parse(SIM));
         s.interface_connect().unwrap();
-        s.set_comm_parameter(vec![0x0006, 9600, 0, 0, 0, 0, 0, 0]).unwrap();
+        s.set_comm_parameter(vec![0x0006, 9600, 0, 0, 0, 0, 0, 0])
+            .unwrap();
         let r = s.transmit_data(&[0x40, 0x05, 0x0B, 0x03]).unwrap();
         assert_eq!(r, vec![0x40, 0x06, 0xA0, 0x00, 0x40 ^ 0x06 ^ 0xA0]);
     }
@@ -1241,16 +1359,24 @@ b=02,8A
         let mut s = SimInterface::new(SimFile::parse(SIM));
         s.interface_connect().unwrap();
         // Concept 2 (KWP1281), wake address 0x12.
-        s.set_comm_parameter(vec![0x0002, 10400, 0x12, 0, 0, 0, 0]).unwrap();
+        s.set_comm_parameter(vec![0x0002, 10400, 0x12, 0, 0, 0, 0])
+            .unwrap();
         assert_eq!(s.transmit_data(&[0x01, 0x03]).unwrap(), vec![0x03, 0x04]);
         // `#0` needs the ECU address; with only a wake address there is no answer.
-        assert_eq!(s.transmit_data(&[0x01, 0x02]), Err(ErrorCode::EDIABAS_IFH_0009));
+        assert_eq!(
+            s.transmit_data(&[0x01, 0x02]),
+            Err(ErrorCode::EDIABAS_IFH_0009)
+        );
         assert_eq!(s.key_bytes().unwrap(), vec![0x01, 0x8A]);
         assert_eq!(s.key_bytes().unwrap(), vec![0x02, 0x8A]);
         assert_eq!(s.key_bytes().unwrap(), vec![0x01, 0x8A]);
         // Without address the [12.] entries are not visible.
-        s.set_comm_parameter(vec![0x010F, 115200, 1000, 20, 20, 3, 5000]).unwrap();
-        assert_eq!(s.transmit_data(&[0x01, 0x02]), Err(ErrorCode::EDIABAS_IFH_0009));
+        s.set_comm_parameter(vec![0x010F, 115200, 1000, 20, 20, 3, 5000])
+            .unwrap();
+        assert_eq!(
+            s.transmit_data(&[0x01, 0x02]),
+            Err(ErrorCode::EDIABAS_IFH_0009)
+        );
         assert_eq!(s.key_bytes().unwrap(), Vec::<u8>::new());
     }
 
@@ -1258,7 +1384,10 @@ b=02,8A
     fn ecu_addr_operand() {
         let mut sim = SimFile::parse(SIM);
         // `#0` uses the ECU address, not the wake address.
-        assert_eq!(sim.get_response(&[0x01, 0x02], Some(0x12), None), Some(vec![0x03, 0x12]));
+        assert_eq!(
+            sim.get_response(&[0x01, 0x02], Some(0x12), None),
+            Some(vec![0x03, 0x12])
+        );
         assert_eq!(sim.get_response(&[0x01, 0x02], None, Some(0x12)), None);
     }
 
@@ -1266,9 +1395,18 @@ b=02,8A
     fn comm_parameter_errors() {
         let mut s = SimInterface::new(SimFile::parse(SIM));
         s.interface_connect().unwrap();
-        assert_eq!(s.set_comm_parameter(vec![]), Err(ErrorCode::EDIABAS_IFH_0041));
-        assert_eq!(s.set_comm_parameter(vec![0x010F, 1]), Err(ErrorCode::EDIABAS_IFH_0041));
-        assert_eq!(s.set_comm_parameter(vec![0x1234]), Err(ErrorCode::EDIABAS_IFH_0014));
+        assert_eq!(
+            s.set_comm_parameter(vec![]),
+            Err(ErrorCode::EDIABAS_IFH_0041)
+        );
+        assert_eq!(
+            s.set_comm_parameter(vec![0x010F, 1]),
+            Err(ErrorCode::EDIABAS_IFH_0041)
+        );
+        assert_eq!(
+            s.set_comm_parameter(vec![0x1234]),
+            Err(ErrorCode::EDIABAS_IFH_0014)
+        );
         // Parameters stay set, like the C# field.
         assert_eq!(s.comm_parameter(), &[0x1234]);
         s.interface_boot().unwrap();
@@ -1279,7 +1417,8 @@ b=02,8A
     fn frequent_and_raw() {
         let mut s = SimInterface::new(SimFile::parse(SIM));
         s.interface_connect().unwrap();
-        s.set_comm_parameter(vec![0x0006, 9600, 0, 0, 0, 0, 0, 0]).unwrap();
+        s.set_comm_parameter(vec![0x0006, 9600, 0, 0, 0, 0, 0, 0])
+            .unwrap();
         s.transmit_frequent(&[0x40, 0x05, 0x0B, 0x03]).unwrap();
         assert_eq!(s.receive_frequent().unwrap().len(), 5);
         s.stop_frequent().unwrap();
@@ -1297,8 +1436,14 @@ b=02,8A
         assert!(parse_hex_string("12?3", true).is_none());
         assert!(parse_hex_string("12+[", true).is_none());
         let items = parse_hex_string("x1, 2X ,00^$3", true).unwrap();
-        assert_eq!((items[0].data_value, items[0].data_mask), (0x01, Some(0x0F)));
-        assert_eq!((items[1].data_value, items[1].data_mask), (0x20, Some(0xF0)));
+        assert_eq!(
+            (items[0].data_value, items[0].data_mask),
+            (0x01, Some(0x0F))
+        );
+        assert_eq!(
+            (items[1].data_value, items[1].data_mask),
+            (0x20, Some(0xF0))
+        );
         assert_eq!(items[2].operator_data, Some(OperatorDataType::Checksum));
         assert_eq!(items[2].operator_index, Some(3));
         // Wildcards are literal in responses ("X1" does not parse as hex).
@@ -1315,7 +1460,8 @@ b=02,8A
         let mut s = SimInterface::open(&path).expect("read sim file");
         assert!(s.sim_file().file_valid());
         s.interface_connect().unwrap();
-        s.set_comm_parameter(vec![0x010F, 115200, 1000, 20, 20, 3, 5000]).unwrap();
+        s.set_comm_parameter(vec![0x010F, 115200, 1000, 20, 20, 3, 5000])
+            .unwrap();
         // BMW-FAST requests are sent without checksum; the response checksum
         // is recalculated by the interface.
         let r = s.transmit_data(&[0x82, 0x12, 0xF1, 0x1A, 0x80]).unwrap();

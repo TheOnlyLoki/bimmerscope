@@ -28,7 +28,11 @@ pub struct State {
 
 impl Default for State {
     fn default() -> Self {
-        Self { table_index: -1, table_row_index: -1, ext: None }
+        Self {
+            table_index: -1,
+            table_row_index: -1,
+            ext: None,
+        }
     }
 }
 
@@ -39,16 +43,29 @@ fn close_table_fs(vm: &mut Vm) {
 
 /// Tables of the active table file (C#: `GetTableInfos(GetTableFs())`).
 fn tables(vm: &Vm) -> &[sgbd::Table] {
-    vm.st_table.ext.as_ref().map_or(&vm.sgbd.tables, |s| &s.tables)
+    vm.st_table
+        .ext
+        .as_ref()
+        .map_or(&vm.sgbd.tables, |s| &s.tables)
 }
 
 /// `<EcuPath>/<base>.prg`, else `.grp`, matched case-insensitively.
 fn find_base_file(vm: &Vm, base: &str) -> Option<std::path::PathBuf> {
     let dir = vm.config_property("EcuPath")?;
-    let entries: Vec<_> = std::fs::read_dir(dir).ok()?.flatten().map(|e| e.path()).collect();
+    let entries: Vec<_> = std::fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .map(|e| e.path())
+        .collect();
     ["prg", "grp"].iter().find_map(|ext| {
         let want = format!("{base}.{ext}");
-        entries.iter().find(|p| p.file_name().is_some_and(|n| n.to_string_lossy().eq_ignore_ascii_case(&want))).cloned()
+        entries
+            .iter()
+            .find(|p| {
+                p.file_name()
+                    .is_some_and(|n| n.to_string_lossy().eq_ignore_ascii_case(&want))
+            })
+            .cloned()
     })
 }
 
@@ -64,7 +81,12 @@ fn assign_table(vm: &mut Vm, idx: i32, found: bool, last_idx: i32, last_row: i32
 }
 
 /// C#: `OpTabset` (tabset)
-pub(crate) fn op_tabset(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_tabset(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     let (last_idx, last_row) = (vm.st_table.table_index, vm.st_table.table_row_index);
     close_table_fs(vm);
     // C#: `_sgbdBaseFs` is the uses file while an inherited job runs. Its
@@ -82,7 +104,12 @@ pub(crate) fn op_tabset(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &m
 }
 
 /// C#: `OpTabseek` (tabseek)
-pub(crate) fn op_tabseek(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_tabseek(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let idx = vm.st_table.table_index;
     if idx < 0 {
         return vm.set_error(ErrorCode::EDIABAS_BIP_0010);
@@ -99,7 +126,12 @@ pub(crate) fn op_tabseek(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &m
 }
 
 /// C#: `OpTabget` (tabget)
-pub(crate) fn op_tabget(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_tabget(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let idx = vm.st_table.table_index;
     if idx < 0 {
         return vm.set_error(ErrorCode::EDIABAS_BIP_0010);
@@ -120,7 +152,12 @@ pub(crate) fn op_tabget(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mu
 }
 
 /// C#: `OpTabline` (tabline)
-pub(crate) fn op_tabline(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_tabline(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     let idx = vm.st_table.table_index;
     if idx < 0 {
         return vm.set_error(ErrorCode::EDIABAS_BIP_0010);
@@ -137,7 +174,12 @@ pub(crate) fn op_tabline(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &
 }
 
 /// C#: `OpTabrows` (tabrows)
-pub(crate) fn op_tabrows(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_tabrows(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     let idx = vm.st_table.table_index;
     let rows = if idx < 0 {
         0
@@ -150,7 +192,12 @@ pub(crate) fn op_tabrows(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &
 }
 
 /// C#: `OpTabseeku` (tabseeku)
-pub(crate) fn op_tabseeku(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_tabseeku(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let idx = vm.st_table.table_index;
     if idx < 0 {
         return vm.set_error(ErrorCode::EDIABAS_BIP_0010);
@@ -167,7 +214,12 @@ pub(crate) fn op_tabseeku(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &
 }
 
 /// C#: `OpTabsetex` (tabsetex)
-pub(crate) fn op_tabsetex(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_tabsetex(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let (last_idx, last_row) = (vm.st_table.table_index, vm.st_table.table_row_index);
     let base = vm.op_string(arg1)?;
     if !base.is_empty() {
@@ -186,9 +238,18 @@ pub(crate) fn op_tabsetex(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &
 }
 
 /// C#: `OpTabcols` (tabcols)
-pub(crate) fn op_tabcols(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_tabcols(
+    vm: &mut Vm,
+    _oc: &OpCode,
+    arg0: &mut Operand,
+    _arg1: &mut Operand,
+) -> VmResult<()> {
     let idx = vm.st_table.table_index;
-    let columns = if idx < 0 { 0 } else { table(vm, idx).map_or(0, |t| t.columns.len() as u32) };
+    let columns = if idx < 0 {
+        0
+    } else {
+        table(vm, idx).map_or(0, |t| t.columns.len() as u32)
+    };
     vm.op_set_raw(arg0, Value::Int(columns), 1)
 }
 
@@ -205,7 +266,10 @@ fn string_to_value(number: &str) -> (i64, bool) {
     if let Some(hex) = lower.strip_prefix("0x") {
         // The first digit must be a hex digit; the rest is parsed by the radix
         // conversion (any other character makes it invalid).
-        let first_ok = hex.chars().next().is_some_and(|c| c.is_ascii_digit() || ('a'..='f').contains(&c));
+        let first_ok = hex
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_digit() || ('a'..='f').contains(&c));
         if hex.is_empty() || !first_ok {
             return (0, false);
         }
@@ -277,7 +341,9 @@ fn find_table(vm: &Vm, name: &str) -> (i32, bool) {
 
 /// C#: `GetTableLine(fs, tableIdx, line, out found)`.
 fn get_table_line(vm: &Vm, idx: i32, line: u32) -> (i32, bool) {
-    let Some(t) = table(vm, idx) else { return (-1, false) };
+    let Some(t) = table(vm, idx) else {
+        return (-1, false);
+    };
     let rows = t.rows.len();
     if line as usize >= rows {
         // Select the last line. For an empty table this is -1, as in C#.
@@ -290,8 +356,12 @@ fn get_table_line(vm: &Vm, idx: i32, line: u32) -> (i32, bool) {
 /// C#: `GetTableEntry(fs, tableIdx, rowIdx, columnName, out columnInvalid)`.
 /// Returns `(entry, column_invalid)`.
 fn get_table_entry(vm: &Vm, idx: i32, row: i32, column: &str) -> (Option<String>, bool) {
-    let Some(t) = table(vm, idx) else { return (None, false) };
-    let Some(col) = column_index(t, column) else { return (None, true) };
+    let Some(t) = table(vm, idx) else {
+        return (None, false);
+    };
+    let Some(col) = column_index(t, column) else {
+        return (None, true);
+    };
     if row < 0 || row as usize >= t.rows.len() {
         return (None, false);
     }
@@ -301,7 +371,12 @@ fn get_table_entry(vm: &Vm, idx: i32, row: i32, column: &str) -> (Option<String>
 /// Shared body of the two `SeekTable` overloads. The C# dictionary keeps the
 /// first row for each key, so a linear scan for the first match gives the same
 /// result. A miss selects the last row (`Rows - 1`) with `found = false`.
-fn seek_rows<K: PartialEq>(t: &sgbd::Table, col: usize, want: &K, key: impl Fn(&str) -> K) -> (i32, bool) {
+fn seek_rows<K: PartialEq>(
+    t: &sgbd::Table,
+    col: usize,
+    want: &K,
+    key: impl Fn(&str) -> K,
+) -> (i32, bool) {
     match t.rows.iter().position(|r| key(cell(r, col)) == *want) {
         Some(i) => (i as i32, true),
         None => (t.rows.len() as i32 - 1, false),
@@ -311,16 +386,24 @@ fn seek_rows<K: PartialEq>(t: &sgbd::Table, col: usize, want: &K, key: impl Fn(&
 /// C#: `SeekTable(fs, tableIdx, columnName, string valueName, out found)`.
 /// Compares upper-cased strings.
 fn seek_string(vm: &Vm, idx: i32, column: &str, value: &str) -> (i32, bool) {
-    let Some(t) = table(vm, idx) else { return (-1, false) };
-    let Some(col) = column_index(t, column) else { return (-1, false) };
+    let Some(t) = table(vm, idx) else {
+        return (-1, false);
+    };
+    let Some(col) = column_index(t, column) else {
+        return (-1, false);
+    };
     seek_rows(t, col, &c_upper(value), c_upper)
 }
 
 /// C#: `SeekTable(fs, tableIdx, columnName, EdValueType value, out found)`.
 /// Cells are parsed with `StringToValue`. Invalid cells become 0, as in C#.
 fn seek_value(vm: &Vm, idx: i32, column: &str, value: u32) -> (i32, bool) {
-    let Some(t) = table(vm, idx) else { return (-1, false) };
-    let Some(col) = column_index(t, column) else { return (-1, false) };
+    let Some(t) = table(vm, idx) else {
+        return (-1, false);
+    };
+    let Some(col) = column_index(t, column) else {
+        return (-1, false);
+    };
     seek_rows(t, col, &value, |s| string_to_value(s).0 as u32)
 }
 
@@ -328,20 +411,27 @@ fn seek_value(vm: &Vm, idx: i32, column: &str, value: u32) -> (i32, bool) {
 mod tests {
     use super::*;
     use crate::operand::Operand;
-    use crate::regs::Reg;
     use crate::ops::OpFn;
+    use crate::regs::Reg;
     use std::sync::Arc;
 
     fn table_t() -> sgbd::Table {
         sgbd::Table {
             name: "T".into(),
             columns: vec!["NR".into(), "TEXT".into()],
-            rows: vec![vec!["0x01".into(), "eins".into()], vec!["0xXY".into(), "default".into()]],
+            rows: vec![
+                vec!["0x01".into(), "eins".into()],
+                vec!["0xXY".into(), "default".into()],
+            ],
         }
     }
 
     fn table_u() -> sgbd::Table {
-        sgbd::Table { name: "U".into(), columns: vec!["A".into()], rows: vec![vec!["1".into()]] }
+        sgbd::Table {
+            name: "U".into(),
+            columns: vec!["A".into()],
+            rows: vec![vec!["1".into()]],
+        }
     }
 
     /// One SGBD with the test tables T (2 data rows) and U (1 data row).
@@ -361,7 +451,8 @@ mod tests {
 
     /// Stores `text` (NUL terminated) in string register `reg`.
     fn set_s(vm: &mut Vm, reg: Reg, text: &str) {
-        vm.reg_set_array(reg, format!("{text}\0").as_bytes(), false).unwrap();
+        vm.reg_set_array(reg, format!("{text}\0").as_bytes(), false)
+            .unwrap();
     }
 
     fn get_s(vm: &mut Vm, reg: Reg) -> String {
@@ -374,7 +465,12 @@ mod tests {
 
     fn tabset(vm: &mut Vm, name: &str) -> VmResult<()> {
         set_s(vm, Reg::S(0), name);
-        run(op_tabset, vm, &mut Operand::r(Reg::S(0)), &mut Operand::none())
+        run(
+            op_tabset,
+            vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::none(),
+        )
     }
 
     #[test]
@@ -407,7 +503,10 @@ mod tests {
         // C# resets the selection before the lookup, so an untrapped error
         // leaves no table selected.
         let r = tabset(&mut vm, "NOPE");
-        assert!(matches!(r, Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))));
+        assert!(matches!(
+            r,
+            Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))
+        ));
         assert_eq!(vm.st_table.table_index, -1);
         assert_eq!(vm.st_table.table_row_index, -1);
     }
@@ -440,7 +539,13 @@ mod tests {
         set_s(&mut vm, Reg::S(0), "nr");
         set_s(&mut vm, Reg::S(1), "0x01");
         vm.flags.zero = true;
-        run(op_tabseek, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::r(Reg::S(1))).unwrap();
+        run(
+            op_tabseek,
+            &mut vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::r(Reg::S(1)),
+        )
+        .unwrap();
         assert_eq!(vm.st_table.table_row_index, 0);
         assert!(!vm.flags.zero);
     }
@@ -451,7 +556,13 @@ mod tests {
         tabset(&mut vm, "T").unwrap();
         set_s(&mut vm, Reg::S(0), "NR");
         set_s(&mut vm, Reg::S(1), "0x7F");
-        run(op_tabseek, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::r(Reg::S(1))).unwrap();
+        run(
+            op_tabseek,
+            &mut vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::r(Reg::S(1)),
+        )
+        .unwrap();
         assert_eq!(vm.st_table.table_row_index, 1);
         assert!(vm.flags.zero);
     }
@@ -462,25 +573,53 @@ mod tests {
         // No table selected.
         set_s(&mut vm, Reg::S(0), "NR");
         set_s(&mut vm, Reg::S(1), "0x01");
-        let r = run(op_tabseek, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::r(Reg::S(1)));
-        assert!(matches!(r, Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))));
+        let r = run(
+            op_tabseek,
+            &mut vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::r(Reg::S(1)),
+        );
+        assert!(matches!(
+            r,
+            Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))
+        ));
         // Unknown column: -1, error, row unchanged.
         tabset(&mut vm, "T").unwrap();
         set_s(&mut vm, Reg::S(0), "XX");
-        let r = run(op_tabseek, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::r(Reg::S(1)));
-        assert!(matches!(r, Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))));
+        let r = run(
+            op_tabseek,
+            &mut vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::r(Reg::S(1)),
+        );
+        assert!(matches!(
+            r,
+            Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))
+        ));
         assert_eq!(vm.st_table.table_row_index, -1);
     }
 
     #[test]
     fn tabseek_empty_table_raises() {
-        let mut vm = vm_with(vec![sgbd::Table { name: "E".into(), columns: vec!["NR".into()], rows: vec![] }]);
+        let mut vm = vm_with(vec![sgbd::Table {
+            name: "E".into(),
+            columns: vec!["NR".into()],
+            rows: vec![],
+        }]);
         tabset(&mut vm, "E").unwrap();
         set_s(&mut vm, Reg::S(0), "NR");
         set_s(&mut vm, Reg::S(1), "1");
         // Miss on an empty table gives row -1, which is an error in C#.
-        let r = run(op_tabseek, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::r(Reg::S(1)));
-        assert!(matches!(r, Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))));
+        let r = run(
+            op_tabseek,
+            &mut vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::r(Reg::S(1)),
+        );
+        assert!(matches!(
+            r,
+            Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))
+        ));
     }
 
     #[test]
@@ -489,15 +628,33 @@ mod tests {
         tabset(&mut vm, "T").unwrap();
         set_s(&mut vm, Reg::S(0), "NR");
         // Row 0 is "0x01" = 1.
-        run(op_tabseeku, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::imm32(1)).unwrap();
+        run(
+            op_tabseeku,
+            &mut vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::imm32(1),
+        )
+        .unwrap();
         assert_eq!(vm.st_table.table_row_index, 0);
         assert!(!vm.flags.zero);
         // Quirk: the invalid "0xXY" parses as 0, so value 0 matches row 1.
-        run(op_tabseeku, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::imm32(0)).unwrap();
+        run(
+            op_tabseeku,
+            &mut vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::imm32(0),
+        )
+        .unwrap();
         assert_eq!(vm.st_table.table_row_index, 1);
         assert!(!vm.flags.zero);
         // Miss selects the last row and sets zero.
-        run(op_tabseeku, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::imm32(5)).unwrap();
+        run(
+            op_tabseeku,
+            &mut vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::imm32(5),
+        )
+        .unwrap();
         assert_eq!(vm.st_table.table_row_index, 1);
         assert!(vm.flags.zero);
     }
@@ -508,13 +665,31 @@ mod tests {
         tabset(&mut vm, "T").unwrap();
         set_s(&mut vm, Reg::S(0), "NR");
         set_s(&mut vm, Reg::S(1), "0x01");
-        run(op_tabseek, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::r(Reg::S(1))).unwrap();
+        run(
+            op_tabseek,
+            &mut vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::r(Reg::S(1)),
+        )
+        .unwrap();
         set_s(&mut vm, Reg::S(2), "TEXT");
-        run(op_tabget, &mut vm, &mut Operand::r(Reg::S(3)), &mut Operand::r(Reg::S(2))).unwrap();
+        run(
+            op_tabget,
+            &mut vm,
+            &mut Operand::r(Reg::S(3)),
+            &mut Operand::r(Reg::S(2)),
+        )
+        .unwrap();
         assert_eq!(get_s(&mut vm, Reg::S(3)), "eins");
         // Column lookup is case-insensitive.
         set_s(&mut vm, Reg::S(2), "text");
-        run(op_tabget, &mut vm, &mut Operand::r(Reg::S(3)), &mut Operand::r(Reg::S(2))).unwrap();
+        run(
+            op_tabget,
+            &mut vm,
+            &mut Operand::r(Reg::S(3)),
+            &mut Operand::r(Reg::S(2)),
+        )
+        .unwrap();
         assert_eq!(get_s(&mut vm, Reg::S(3)), "eins");
     }
 
@@ -524,7 +699,13 @@ mod tests {
         tabset(&mut vm, "T").unwrap();
         set_s(&mut vm, Reg::S(2), "TEXT");
         set_s(&mut vm, Reg::S(3), "old");
-        run(op_tabget, &mut vm, &mut Operand::r(Reg::S(3)), &mut Operand::r(Reg::S(2))).unwrap();
+        run(
+            op_tabget,
+            &mut vm,
+            &mut Operand::r(Reg::S(3)),
+            &mut Operand::r(Reg::S(2)),
+        )
+        .unwrap();
         assert_eq!(get_s(&mut vm, Reg::S(3)), "");
     }
 
@@ -533,28 +714,64 @@ mod tests {
         let mut vm = vm();
         set_s(&mut vm, Reg::S(2), "TEXT");
         // No table selected.
-        let r = run(op_tabget, &mut vm, &mut Operand::r(Reg::S(3)), &mut Operand::r(Reg::S(2)));
-        assert!(matches!(r, Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))));
+        let r = run(
+            op_tabget,
+            &mut vm,
+            &mut Operand::r(Reg::S(3)),
+            &mut Operand::r(Reg::S(2)),
+        );
+        assert!(matches!(
+            r,
+            Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))
+        ));
         // Unknown column with no row selected is still an error (column invalid).
         tabset(&mut vm, "T").unwrap();
         set_s(&mut vm, Reg::S(2), "XX");
-        let r = run(op_tabget, &mut vm, &mut Operand::r(Reg::S(3)), &mut Operand::r(Reg::S(2)));
-        assert!(matches!(r, Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))));
+        let r = run(
+            op_tabget,
+            &mut vm,
+            &mut Operand::r(Reg::S(3)),
+            &mut Operand::r(Reg::S(2)),
+        );
+        assert!(matches!(
+            r,
+            Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))
+        ));
         // Unknown column with a row selected is an error too.
         vm.st_table.table_row_index = 0;
-        let r = run(op_tabget, &mut vm, &mut Operand::r(Reg::S(3)), &mut Operand::r(Reg::S(2)));
-        assert!(matches!(r, Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))));
+        let r = run(
+            op_tabget,
+            &mut vm,
+            &mut Operand::r(Reg::S(3)),
+            &mut Operand::r(Reg::S(2)),
+        );
+        assert!(matches!(
+            r,
+            Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))
+        ));
     }
 
     #[test]
     fn tabline_selects_row_by_number() {
         let mut vm = vm();
         tabset(&mut vm, "T").unwrap();
-        run(op_tabline, &mut vm, &mut Operand::imm32(1), &mut Operand::none()).unwrap();
+        run(
+            op_tabline,
+            &mut vm,
+            &mut Operand::imm32(1),
+            &mut Operand::none(),
+        )
+        .unwrap();
         assert_eq!(vm.st_table.table_row_index, 1);
         assert!(!vm.flags.zero);
         // Line beyond the table selects the last row and sets zero.
-        run(op_tabline, &mut vm, &mut Operand::imm32(7), &mut Operand::none()).unwrap();
+        run(
+            op_tabline,
+            &mut vm,
+            &mut Operand::imm32(7),
+            &mut Operand::none(),
+        )
+        .unwrap();
         assert_eq!(vm.st_table.table_row_index, 1);
         assert!(vm.flags.zero);
     }
@@ -562,24 +779,56 @@ mod tests {
     #[test]
     fn tabline_without_table_raises() {
         let mut vm = vm();
-        let r = run(op_tabline, &mut vm, &mut Operand::imm32(0), &mut Operand::none());
-        assert!(matches!(r, Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))));
+        let r = run(
+            op_tabline,
+            &mut vm,
+            &mut Operand::imm32(0),
+            &mut Operand::none(),
+        );
+        assert!(matches!(
+            r,
+            Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))
+        ));
     }
 
     #[test]
     fn tabcols_and_tabrows() {
         let mut vm = vm();
         // No table: both return 0.
-        run(op_tabcols, &mut vm, &mut Operand::r(Reg::L(0)), &mut Operand::none()).unwrap();
+        run(
+            op_tabcols,
+            &mut vm,
+            &mut Operand::r(Reg::L(0)),
+            &mut Operand::none(),
+        )
+        .unwrap();
         assert_eq!(vm.regs.value(Reg::L(0)).unwrap(), 0);
-        run(op_tabrows, &mut vm, &mut Operand::r(Reg::L(0)), &mut Operand::none()).unwrap();
+        run(
+            op_tabrows,
+            &mut vm,
+            &mut Operand::r(Reg::L(0)),
+            &mut Operand::none(),
+        )
+        .unwrap();
         assert_eq!(vm.regs.value(Reg::L(0)).unwrap(), 0);
 
         tabset(&mut vm, "T").unwrap();
-        run(op_tabcols, &mut vm, &mut Operand::r(Reg::L(0)), &mut Operand::none()).unwrap();
+        run(
+            op_tabcols,
+            &mut vm,
+            &mut Operand::r(Reg::L(0)),
+            &mut Operand::none(),
+        )
+        .unwrap();
         assert_eq!(vm.regs.value(Reg::L(0)).unwrap(), 2);
         // 2 data rows + header.
-        run(op_tabrows, &mut vm, &mut Operand::r(Reg::L(0)), &mut Operand::none()).unwrap();
+        run(
+            op_tabrows,
+            &mut vm,
+            &mut Operand::r(Reg::L(0)),
+            &mut Operand::none(),
+        )
+        .unwrap();
         assert_eq!(vm.regs.value(Reg::L(0)).unwrap(), 3);
     }
 
@@ -588,23 +837,48 @@ mod tests {
         let mut vm = vm();
         set_s(&mut vm, Reg::S(0), "U");
         set_s(&mut vm, Reg::S(1), "");
-        run(op_tabsetex, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::r(Reg::S(1))).unwrap();
+        run(
+            op_tabsetex,
+            &mut vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::r(Reg::S(1)),
+        )
+        .unwrap();
         assert_eq!(vm.st_table.table_index, 1);
         // Not found: error, and the selection is not reset (no file switch).
         tabset(&mut vm, "T").unwrap();
         set_s(&mut vm, Reg::S(0), "NOPE");
-        let r = run(op_tabsetex, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::r(Reg::S(1)));
-        assert!(matches!(r, Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))));
+        let r = run(
+            op_tabsetex,
+            &mut vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::r(Reg::S(1)),
+        );
+        assert!(matches!(
+            r,
+            Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))
+        ));
         assert_eq!(vm.st_table.table_index, 0);
     }
 
     #[test]
     fn tabsetex_with_missing_base_file_raises_sys_0002() {
         let mut vm = vm();
-        vm.config.insert("EcuPath".into(), std::env::temp_dir().to_string_lossy().into_owned());
+        vm.config.insert(
+            "EcuPath".into(),
+            std::env::temp_dir().to_string_lossy().into_owned(),
+        );
         set_s(&mut vm, Reg::S(0), "U");
         set_s(&mut vm, Reg::S(1), "no_such_bmwa_base_file");
-        let r = run(op_tabsetex, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::r(Reg::S(1)));
-        assert!(matches!(r, Err(crate::VmError::Raised(ErrorCode::EDIABAS_SYS_0002))));
+        let r = run(
+            op_tabsetex,
+            &mut vm,
+            &mut Operand::r(Reg::S(0)),
+            &mut Operand::r(Reg::S(1)),
+        );
+        assert!(matches!(
+            r,
+            Err(crate::VmError::Raised(ErrorCode::EDIABAS_SYS_0002))
+        ));
     }
 }

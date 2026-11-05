@@ -44,7 +44,11 @@ pub struct ResultData {
 
 impl ResultData {
     pub fn new(ty: ResultType, name: impl Into<String>, value: ResultValue) -> Self {
-        Self { ty, name: name.into(), value }
+        Self {
+            ty,
+            name: name.into(),
+            value,
+        }
     }
 }
 
@@ -55,7 +59,11 @@ pub struct ResultSet(pub Vec<ResultData>);
 impl ResultSet {
     /// Inserts or replaces (C#: `SetResultData`).
     pub fn set(&mut self, data: ResultData) {
-        match self.0.iter_mut().find(|r| r.name.eq_ignore_ascii_case(&data.name)) {
+        match self
+            .0
+            .iter_mut()
+            .find(|r| r.name.eq_ignore_ascii_case(&data.name))
+        {
             Some(slot) => *slot = data,
             None => self.0.push(data),
         }

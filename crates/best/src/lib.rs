@@ -5,8 +5,8 @@
 
 pub mod error_code;
 pub mod flags;
-pub mod job;
 pub mod iface;
+pub mod job;
 pub mod operand;
 pub mod ops;
 pub mod regs;

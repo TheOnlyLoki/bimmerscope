@@ -10,7 +10,8 @@ use std::sync::{Arc, Mutex};
 use best::ErrorCode;
 use best::iface::IfResult;
 use best::telegram::{
-    TRANS_BUFFER_SIZE, calc_checksum_bmw_fast, calc_checksum_xor, tel_length_bmw_fast, tel_length_kwp2000s,
+    TRANS_BUFFER_SIZE, calc_checksum_bmw_fast, calc_checksum_xor, tel_length_bmw_fast,
+    tel_length_kwp2000s,
 };
 
 use crate::link::{Parity, SerialLink};
@@ -260,7 +261,10 @@ impl ObdCore {
 
     /// C#: `CommParameter` setter after `StopCommThread`, for `comm_par`.
     pub fn apply_comm_parameter(&mut self) -> IfResult<()> {
-        let edic_par = self.comm_par.as_ref().is_some_and(|p| p.first() == Some(&0x0000));
+        let edic_par = self
+            .comm_par
+            .as_ref()
+            .is_some_and(|p| p.first() == Some(&0x0000));
 
         self.comm_answer_len = [0, 0];
         self.transmit = None;
@@ -411,12 +415,18 @@ impl ObdCore {
                 if tp_len > 11 {
                     return Err(ErrorCode::EDIABAS_IFH_0041);
                 }
-                self.par_tester_present_tel = p[10..10 + tp_len as usize].iter().map(|v| *v as u8).collect();
+                self.par_tester_present_tel = p[10..10 + tp_len as usize]
+                    .iter()
+                    .map(|v| *v as u8)
+                    .collect();
                 let sc_len = p[21] as i32;
                 if sc_len > 11 {
                     return Err(ErrorCode::EDIABAS_IFH_0041);
                 }
-                self.par_start_comm_tel = p[22..22 + sc_len as usize].iter().map(|v| *v as u8).collect();
+                self.par_start_comm_tel = p[22..22 + sc_len as usize]
+                    .iter()
+                    .map(|v| *v as u8)
+                    .collect();
                 self.par_send_set_dtr = !self.has_adapter_echo;
                 self.ecu_connected = true;
                 self.par_support_frequent = true;
@@ -484,7 +494,10 @@ impl ObdCore {
 
         if check_std_timeout && self.par_timeout_std <= 0 {
             self.par_timeout_std = DEFAULT_STD_TIMEOUT;
-            self.log_str(&format!("No timeout specified, using: {}", self.par_timeout_std));
+            self.log_str(&format!(
+                "No timeout specified, using: {}",
+                self.par_timeout_std
+            ));
         }
 
         if let Some(link) = self.link.as_mut() {
@@ -506,11 +519,17 @@ impl ObdCore {
     }
 
     pub fn has_idle_func(&self) -> bool {
-        matches!(self.transmit, Some(Transmit::Kwp2000Bmw | Transmit::Kwp2000))
+        matches!(
+            self.transmit,
+            Some(Transmit::Kwp2000Bmw | Transmit::Kwp2000)
+        )
     }
 
     pub fn has_frequent_func(&self) -> bool {
-        matches!(self.transmit, Some(Transmit::Ds2 | Transmit::Kwp2000Bmw | Transmit::Kwp2000))
+        matches!(
+            self.transmit,
+            Some(Transmit::Ds2 | Transmit::Kwp2000Bmw | Transmit::Kwp2000)
+        )
     }
 
     // -----------------------------------------------------------------------
@@ -563,7 +582,11 @@ impl ObdCore {
 
     /// C#: `CommThreadCommands.IdleTransmit`, one cycle.
     pub fn idle_transmit(&mut self) {
-        let r = if self.send_buffer_frequent.is_empty() { self.obd_idle_trans() } else { self.obd_frequent_trans() };
+        let r = if self.send_buffer_frequent.is_empty() {
+            self.obd_idle_trans()
+        } else {
+            self.obd_frequent_trans()
+        };
         if r.is_err() && self.thread_command == ThreadCommand::IdleTransmit {
             self.thread_command = ThreadCommand::Idle;
         }
@@ -574,7 +597,11 @@ impl ObdCore {
     // -----------------------------------------------------------------------
 
     fn bit_count(&self) -> u32 {
-        if self.current_parity == Parity::None { self.current_data_bits as u32 + 2 } else { self.current_data_bits as u32 + 3 }
+        if self.current_parity == Parity::None {
+            self.current_data_bits as u32 + 2
+        } else {
+            self.current_data_bits as u32 + 3
+        }
     }
 
     /// C#: `SendData(sendData, length, setDtr, interbyteTime)`.
@@ -586,7 +613,9 @@ impl ObdCore {
             let byte_time = 1.0 / self.current_baud_rate as f64 * 1000.0 * self.bit_count() as f64;
             let interbyte_us = ((interbyte_time as f64 + byte_time) * 1000.0) as u64;
             {
-                let Some(link) = self.link.as_mut() else { return false };
+                let Some(link) = self.link.as_mut() else {
+                    return false;
+                };
                 if link.purge_input().is_err() {
                     return false;
                 }
@@ -617,7 +646,9 @@ impl ObdCore {
         }
         let byte_time = 1.0 / self.current_baud_rate as f64 * 1000.0 * self.bit_count() as f64;
         let dtr_time_corr = self.dtr_time_corr_com;
-        let Some(link) = self.link.as_mut() else { return false };
+        let Some(link) = self.link.as_mut() else {
+            return false;
+        };
         let r: std::io::Result<()> = (|| {
             if set_dtr {
                 let wait_us = ((dtr_time_corr + byte_time * data.len() as f64) * 1000.0) as u64;
@@ -666,7 +697,9 @@ impl ObdCore {
             // C#: index exception, caught
             return false;
         }
-        let Some(link) = self.link.as_mut() else { return false };
+        let Some(link) = self.link.as_mut() else {
+            return false;
+        };
 
         // wait for first byte
         let start = link.now_us();
@@ -733,7 +766,9 @@ impl ObdCore {
 
     /// C#: `SendWakeFastInit`: 25 ms break (K-line low), then 25 ms idle.
     pub fn send_wake_fast_init(&mut self, set_dtr: bool) -> bool {
-        let Some(link) = self.link.as_mut() else { return false };
+        let Some(link) = self.link.as_mut() else {
+            return false;
+        };
         let r: std::io::Result<()> = (|| {
             if set_dtr {
                 link.set_dtr(true)?;
@@ -754,8 +789,16 @@ impl ObdCore {
     /// C#: `SendWakeAddress5Baud`: address bits at 5 baud via break state.
     /// `set_dtr`, `both_lines` and `auto_key_byte_delay` are only used by
     /// adapters with a pulse function, not by the serial port.
-    pub fn send_wake_address_5baud(&mut self, value: u8, _set_dtr: bool, _both_lines: bool, _auto_key_byte_delay: i32) -> bool {
-        let Some(link) = self.link.as_mut() else { return false };
+    pub fn send_wake_address_5baud(
+        &mut self,
+        value: u8,
+        _set_dtr: bool,
+        _both_lines: bool,
+        _auto_key_byte_delay: i32,
+    ) -> bool {
+        let Some(link) = self.link.as_mut() else {
+            return false;
+        };
         let r: std::io::Result<()> = (|| {
             link.purge_input()?;
             let start = link.now_us();
@@ -786,7 +829,11 @@ impl ObdCore {
         let Some(transmit) = self.transmit else {
             return Err(ErrorCode::EDIABAS_IFH_0006);
         };
-        let retries = if self.retry_comm { self.comm_repeats } else { 0 };
+        let retries = if self.retry_comm {
+            self.comm_repeats
+        } else {
+            0
+        };
         let mut error = ErrorCode::EDIABAS_ERR_NONE;
         for _ in 0..retries as u64 + 1 {
             let r = match transmit {
@@ -870,7 +917,12 @@ impl ObdCore {
 
     /// Regeneration time wait, send, echo check: the common send part of
     /// the K-line handlers. `send_buf` holds the telegram with checksum.
-    fn send_with_echo(&mut self, send_buf: &[u8], rec: &mut [u8], enable_logging: bool) -> IfResult<()> {
+    fn send_with_echo(
+        &mut self,
+        send_buf: &[u8],
+        rec: &mut [u8],
+        enable_logging: bool,
+    ) -> IfResult<()> {
         if enable_logging {
             self.log_data(send_buf, "Send");
         }
@@ -887,7 +939,14 @@ impl ObdCore {
         if self.has_adapter_echo {
             // remove remote echo
             let send_length = send_buf.len();
-            if !self.receive_data(rec, 0, send_length, ECHO_TIMEOUT, self.par_timeout_tel_end, false) {
+            if !self.receive_data(
+                rec,
+                0,
+                send_length,
+                ECHO_TIMEOUT,
+                self.par_timeout_tel_end,
+                false,
+            ) {
                 if enable_logging {
                     self.log_str("*** No echo received");
                 }
@@ -917,7 +976,12 @@ impl ObdCore {
     /// `send` empty: only receive. NR78 extends the timeout, NR21/NR23
     /// repeat the request (if configured). `rec_buf_len` is the size of the
     /// C# receive buffer. Returns the response including checksum.
-    pub fn trans_kwp2000_tel(&mut self, send: &[u8], rec_buf_len: usize, enable_logging: bool) -> IfResult<Vec<u8>> {
+    pub fn trans_kwp2000_tel(
+        &mut self,
+        send: &[u8],
+        rec_buf_len: usize,
+        enable_logging: bool,
+    ) -> IfResult<Vec<u8>> {
         let mut nr_send_count = 0;
         'restart: loop {
             let mut rec = vec![0u8; rec_buf_len];
@@ -939,7 +1003,11 @@ impl ObdCore {
             }
 
             loop {
-                let timeout = if !self.nr78_dict.is_empty() { self.par_timeout_nr78 } else { self.par_timeout_std };
+                let timeout = if !self.nr78_dict.is_empty() {
+                    self.par_timeout_nr78
+                } else {
+                    self.par_timeout_std
+                };
                 let tel_end = self.par_timeout_tel_end;
                 // header byte
                 let mut head_length = 4;
@@ -971,7 +1039,14 @@ impl ObdCore {
                 }
 
                 let rec_length = tel_length_bmw_fast(&rec).unwrap_or(0);
-                if !self.receive_data(&mut rec, head_length, (rec_length + 1).saturating_sub(head_length), tel_end, tel_end, false) {
+                if !self.receive_data(
+                    &mut rec,
+                    head_length,
+                    (rec_length + 1).saturating_sub(head_length),
+                    tel_end,
+                    tel_end,
+                    false,
+                ) {
                     if enable_logging {
                         self.log_data(&rec[..4], "*** Rec");
                         self.log_str(&format!("*** No tail received: Length={rec_length}"));
@@ -981,7 +1056,9 @@ impl ObdCore {
                 if enable_logging {
                     self.log_data(&rec[..rec_length + 1], "Resp");
                 }
-                if !self.par_checksum_no_check && calc_checksum_bmw_fast(&rec, rec_length) != rec[rec_length] {
+                if !self.par_checksum_no_check
+                    && calc_checksum_bmw_fast(&rec, rec_length) != rec[rec_length]
+                {
                     if enable_logging {
                         self.log_str("*** Checksum incorrect");
                     }
@@ -1145,7 +1222,11 @@ impl ObdCore {
         }
 
         loop {
-            let timeout = if !self.nr78_dict.is_empty() { self.par_timeout_nr78 } else { self.par_timeout_std };
+            let timeout = if !self.nr78_dict.is_empty() {
+                self.par_timeout_nr78
+            } else {
+                self.par_timeout_std
+            };
             let tel_end = self.par_timeout_tel_end;
             // header byte
             if !self.receive_data(&mut rec, 0, 4, timeout, tel_end, false) {
@@ -1159,7 +1240,8 @@ impl ObdCore {
                 return Err(ErrorCode::EDIABAS_IFH_0009);
             }
             self.log_data(&rec[..rec_length + 1], "Resp");
-            if !self.par_checksum_no_check && calc_checksum_xor(&rec, rec_length) != rec[rec_length] {
+            if !self.par_checksum_no_check && calc_checksum_xor(&rec, rec_length) != rec[rec_length]
+            {
                 self.log_str("*** Checksum incorrect");
                 self.flush_receive(&mut rec, timeout, true);
                 return Err(ErrorCode::EDIABAS_IFH_0009);
@@ -1210,7 +1292,14 @@ impl ObdCore {
             return Err(ErrorCode::EDIABAS_IFH_0041);
         }
         let header_len = header_len as usize;
-        if !self.receive_data(&mut rec, 0, header_len, self.par_timeout_std, self.par_timeout_tel_end, false) {
+        if !self.receive_data(
+            &mut rec,
+            0,
+            header_len,
+            self.par_timeout_std,
+            self.par_timeout_tel_end,
+            false,
+        ) {
             self.log_str("*** No header received");
             return Err(ErrorCode::EDIABAS_IFH_0009);
         }
@@ -1223,7 +1312,16 @@ impl ObdCore {
         }
         let rec_length = rec_length as usize;
         let tel_end = self.par_timeout_tel_end;
-        if rec_length > header_len && !self.receive_data(&mut rec, header_len, rec_length - header_len, tel_end, tel_end, false) {
+        if rec_length > header_len
+            && !self.receive_data(
+                &mut rec,
+                header_len,
+                rec_length - header_len,
+                tel_end,
+                tel_end,
+                false,
+            )
+        {
             self.log_data(&rec[..4], "*** Rec");
             self.log_str(&format!("*** No tail received: Length={rec_length}"));
             return Err(ErrorCode::EDIABAS_IFH_0009);
@@ -1232,7 +1330,9 @@ impl ObdCore {
             return Err(ErrorCode::EDIABAS_IFH_0009);
         }
         self.log_data(&rec[..rec_length], "Resp");
-        if !self.par_checksum_no_check && calc_checksum_xor(&rec, rec_length - 1) != rec[rec_length - 1] {
+        if !self.par_checksum_no_check
+            && calc_checksum_xor(&rec, rec_length - 1) != rec[rec_length - 1]
+        {
             self.log_str("*** Checksum incorrect");
             self.flush_receive(&mut rec, self.par_timeout_std, true);
             return Err(ErrorCode::EDIABAS_IFH_0009);
@@ -1289,7 +1389,10 @@ impl ObdCore {
 
             self.log_str("Establish connection");
             let data_bits = self.current_data_bits;
-            let r = self.link.as_mut().map(|l| l.set_config(9600, data_bits, Parity::None));
+            let r = self
+                .link
+                .as_mut()
+                .map(|l| l.set_config(9600, data_bits, Parity::None));
             if !matches!(r, Some(Ok(()))) {
                 self.log_str("*** Set baud rate failed");
                 return Err(ErrorCode::EDIABAS_IFH_0041);
@@ -1304,7 +1407,12 @@ impl ObdCore {
 
             let mut buf = [0u8; KWP1281_BUFFER_SIZE];
             self.last_comm_tick = self.now();
-            if !self.send_wake_address_5baud(self.par_edic_wake_address, self.par_send_set_dtr, true, self.par_edic_w4a) {
+            if !self.send_wake_address_5baud(
+                self.par_edic_wake_address,
+                self.par_send_set_dtr,
+                true,
+                self.par_edic_w4a,
+            ) {
                 self.last_comm_tick = self.now();
                 self.log_str("*** Sending wake address failed");
                 return Err(ErrorCode::EDIABAS_IFH_0003);
@@ -1339,7 +1447,10 @@ impl ObdCore {
                         return Err(ErrorCode::EDIABAS_IFH_0009);
                     }
                     self.log_str("Baud rate 10.4k detected");
-                    let r = self.link.as_mut().map(|l| l.set_config(10400, data_bits, Parity::None));
+                    let r = self
+                        .link
+                        .as_mut()
+                        .map(|l| l.set_config(10400, data_bits, Parity::None));
                     if !matches!(r, Some(Ok(()))) {
                         self.log_str("*** Set baud rate failed");
                         return Err(ErrorCode::EDIABAS_IFH_0041);
@@ -1357,11 +1468,19 @@ impl ObdCore {
 
             self.last_comm_tick = self.now();
             self.log_str(&format!("Key bytes: {:02X} {:02X}", buf[0], buf[1]));
-            self.kwp_mode = if buf[1] == 0x8F { KwpMode::Kwp2000 } else { KwpMode::Kwp1281 };
+            self.kwp_mode = if buf[1] == 0x8F {
+                KwpMode::Kwp2000
+            } else {
+                KwpMode::Kwp1281
+            };
 
             key_bytes_list.push(buf[0]);
             key_bytes_list.push(buf[1]);
-            key_bytes_list.push(if self.kwp_mode == KwpMode::Kwp2000 { !self.par_edic_wake_address } else { 0x00 });
+            key_bytes_list.push(if self.kwp_mode == KwpMode::Kwp2000 {
+                !self.par_edic_wake_address
+            } else {
+                0x00
+            });
             key_bytes_list.push(self.current_baud_rate as u8);
             key_bytes_list.push((self.current_baud_rate >> 8) as u8);
 
@@ -1411,9 +1530,18 @@ impl ObdCore {
                     // create full telegram
                     let mut buf = Vec::with_capacity(send.len() + 5);
                     if send.len() > 0x3F {
-                        buf.extend_from_slice(&[0x80, self.par_edic_ecu_address, self.par_edic_tester_address, send.len() as u8]);
+                        buf.extend_from_slice(&[
+                            0x80,
+                            self.par_edic_ecu_address,
+                            self.par_edic_tester_address,
+                            send.len() as u8,
+                        ]);
                     } else {
-                        buf.extend_from_slice(&[0x80 | send.len() as u8, self.par_edic_ecu_address, self.par_edic_tester_address]);
+                        buf.extend_from_slice(&[
+                            0x80 | send.len() as u8,
+                            self.par_edic_ecu_address,
+                            self.par_edic_tester_address,
+                        ]);
                     }
                     buf.extend_from_slice(send);
                     buf.push(0); // checksum
@@ -1518,7 +1646,13 @@ impl ObdCore {
         }
         match self.kwp_mode {
             KwpMode::Kwp2000 => {
-                let finish_tel = [0x81, self.par_edic_ecu_address, self.par_edic_tester_address, 0x82, 0x00];
+                let finish_tel = [
+                    0x81,
+                    self.par_edic_ecu_address,
+                    self.par_edic_tester_address,
+                    0x82,
+                    0x00,
+                ];
                 let r = self.trans_kwp2000_tel(&finish_tel[..4], KWP1281_BUFFER_SIZE, false);
                 self.ecu_connected = false;
                 r.map(|_| ())

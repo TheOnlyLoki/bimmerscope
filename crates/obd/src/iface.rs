@@ -11,7 +11,7 @@ use best::ErrorCode;
 use best::iface::{IfResult, Interface};
 use best::telegram::TRANS_BUFFER_SIZE;
 
-use crate::core::{ObdCore, ThreadCommand, TICK_NEVER};
+use crate::core::{ObdCore, TICK_NEVER, ThreadCommand};
 use crate::link::{Parity, SerialLink, SerialPortLink};
 
 /// Opens the serial link for a port name.
@@ -49,7 +49,9 @@ impl ObdInterface {
     pub fn new(port_name: &str) -> ObdInterface {
         ObdInterface::with_opener(
             port_name,
-            Box::new(|name: &str| SerialPortLink::open(name).map(|l| Box::new(l) as Box<dyn SerialLink>)),
+            Box::new(|name: &str| {
+                SerialPortLink::open(name).map(|l| Box::new(l) as Box<dyn SerialLink>)
+            }),
         )
     }
 
@@ -405,7 +407,11 @@ impl Interface for ObdInterface {
             return Err(ErrorCode::EDIABAS_IFH_0056);
         }
         let dsr = self.dsr_state()?;
-        Ok(if dsr { lock(&self.core).battery_voltage_value } else { 0 })
+        Ok(if dsr {
+            lock(&self.core).battery_voltage_value
+        } else {
+            0
+        })
     }
 
     /// C#: no ignition status function on a plain serial port: DSR.
@@ -414,7 +420,11 @@ impl Interface for ObdInterface {
             return Err(ErrorCode::EDIABAS_IFH_0056);
         }
         let dsr = self.dsr_state()?;
-        Ok(if dsr { lock(&self.core).ignition_voltage_value } else { 0 })
+        Ok(if dsr {
+            lock(&self.core).ignition_voltage_value
+        } else {
+            0
+        })
     }
 
     fn get_port(&mut self, _index: u32) -> IfResult<i64> {

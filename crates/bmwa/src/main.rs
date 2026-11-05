@@ -33,10 +33,15 @@ struct Args {
 /// Diagnostic interface for the worker thread. Built there, since interfaces are not `Send`.
 fn make_interface(args: &Args) -> Option<Box<dyn best::Interface>> {
     if let Some(path) = &args.sim {
-        return SimInterface::open(path).ok().map(|s| Box::new(s) as Box<dyn best::Interface>);
+        return SimInterface::open(path)
+            .ok()
+            .map(|s| Box::new(s) as Box<dyn best::Interface>);
     }
     let port = args.port.clone().or_else(|| {
-        cable::scan().into_iter().find(|p| p.is_ftdi()).map(|p| p.dev.display().to_string())
+        cable::scan()
+            .into_iter()
+            .find(|p| p.is_ftdi())
+            .map(|p| p.dev.display().to_string())
     })?;
     Some(Box::new(obd::ObdInterface::new(&port)))
 }

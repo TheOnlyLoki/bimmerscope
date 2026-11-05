@@ -14,7 +14,12 @@ pub struct State {}
 
 /// C#: `OpParl` (parb, parw, parl). The C# handler is shared by all three
 /// opcodes and does not look at the opcode name, so neither does this port.
-pub(crate) fn op_parl(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_parl(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpParl Invalid type");
     }
@@ -40,7 +45,12 @@ pub(crate) fn op_parl(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpPars` (pars)
-pub(crate) fn op_pars(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_pars(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpPars: Invalid type");
     }
@@ -61,7 +71,12 @@ pub(crate) fn op_pars(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpParr` (parr)
-pub(crate) fn op_parr(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_parr(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpParr: Invalid type");
     }
@@ -85,7 +100,12 @@ pub(crate) fn op_parr(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpPary` (pary)
-pub(crate) fn op_pary(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_pary(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpPary: Invalid type");
     }
@@ -101,7 +121,12 @@ pub(crate) fn op_pary(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpParn` (parn)
-pub(crate) fn op_parn(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_parn(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpParn: Invalid type");
     }
@@ -124,13 +149,13 @@ fn string_to_value(number: &str) -> (i64, bool) {
         return (0, false);
     }
     let number_lower = number_local.to_lowercase();
-    if number_lower.starts_with("0x") {
+    if let Some(hex) = number_lower.strip_prefix("0x") {
         // hex: the char after "0x" must be a digit or a-f
-        let first = number_lower[2..].chars().next();
-        if first.is_some_and(|c| c.is_ascii_hexdigit()) {
-            if let Some(v) = parse_radix_i64(&number_local[2..], 16) {
-                return (v, true);
-            }
+        let first = hex.chars().next();
+        if first.is_some_and(|c| c.is_ascii_hexdigit())
+            && let Some(v) = parse_radix_i64(&number_local[2..], 16)
+        {
+            return (v, true);
         }
         (0, false)
     } else if number_lower.starts_with("0y") {
@@ -144,7 +169,11 @@ fn string_to_value(number: &str) -> (i64, bool) {
         if number_lower == "-" || number_lower == "--" {
             return (0, false);
         }
-        if number_local.chars().next().is_some_and(|c| c.is_alphabetic()) {
+        if number_local
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_alphabetic())
+        {
             return (0, false);
         }
         let conv = number_local.trim_start();
@@ -164,7 +193,13 @@ fn string_to_value(number: &str) -> (i64, bool) {
 /// "FFFFFFFFFFFFFFFF" gives -1. Leading zeros are accepted here; .NET may
 /// reject more than 16 hex digits even when they are zeros (not verified).
 fn parse_radix_i64(s: &str, radix: u32) -> Option<i64> {
-    let s = if radix == 16 { s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")).unwrap_or(s) } else { s };
+    let s = if radix == 16 {
+        s.strip_prefix("0x")
+            .or_else(|| s.strip_prefix("0X"))
+            .unwrap_or(s)
+    } else {
+        s
+    };
     if s.is_empty() || !s.chars().all(|c| c.is_digit(radix)) {
         return None;
     }

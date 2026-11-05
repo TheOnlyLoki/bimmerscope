@@ -3,9 +3,19 @@
 fn main() {
     let path = std::env::args().nth(1).expect("usage: dump <file>");
     let s = sgbd::Sgbd::open(&path).unwrap();
-    println!("kind={:?} ecu={:?} rev={} uses={:?}", s.kind, s.description.get("ECU"), s.version.revision, s.uses);
+    println!(
+        "kind={:?} ecu={:?} rev={} uses={:?}",
+        s.kind,
+        s.description.get("ECU"),
+        s.version.revision,
+        s.uses
+    );
     println!("comment: {}", s.description.ecu_comment());
-    println!("{} jobs: {:?}", s.jobs.len(), s.jobs.iter().take(8).map(|j| &j.name).collect::<Vec<_>>());
+    println!(
+        "{} jobs: {:?}",
+        s.jobs.len(),
+        s.jobs.iter().take(8).map(|j| &j.name).collect::<Vec<_>>()
+    );
     for t in &s.tables {
         println!("table {} {:?} rows={}", t.name, t.columns, t.rows.len());
     }

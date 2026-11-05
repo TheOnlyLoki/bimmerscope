@@ -7,7 +7,7 @@ use ratatui::widgets::{ListState, TableState};
 use sgbd::Sgbd;
 
 use crate::cable::{self, Port};
-use crate::diag::{Command, Found, FaultMemory, Handle, ScanState};
+use crate::diag::{Command, FaultMemory, Found, Handle, ScanState};
 use crate::index::{EcuFile, Update};
 
 const CABLE_RESCAN: Duration = Duration::from_secs(2);
@@ -86,7 +86,12 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(ecu_dir: PathBuf, files: Vec<EcuFile>, index_rx: Receiver<Update>, worker: Handle) -> Self {
+    pub fn new(
+        ecu_dir: PathBuf,
+        files: Vec<EcuFile>,
+        index_rx: Receiver<Update>,
+        worker: Handle,
+    ) -> Self {
         let ports = cable::scan();
         let had_ftdi = ports.iter().any(Port::is_ftdi);
         let mut app = Self {
@@ -155,11 +160,16 @@ impl App {
     }
 
     pub fn selected_file(&self) -> Option<&EcuFile> {
-        self.file_state.selected().and_then(|i| self.visible.get(i)).map(|&i| &self.files[i])
+        self.file_state
+            .selected()
+            .and_then(|i| self.visible.get(i))
+            .map(|&i| &self.files[i])
     }
 
     pub fn selected_module(&self) -> Option<&Found> {
-        self.fault_list.selected().and_then(|i| self.memory.found.get(i))
+        self.fault_list
+            .selected()
+            .and_then(|i| self.memory.found.get(i))
     }
 
     pub fn sgbd(&self) -> Option<&Sgbd> {
@@ -177,10 +187,15 @@ impl App {
         let keep = self.selected_file().map(|f| f.name.clone());
         let needle = self.filter.to_lowercase();
         self.visible = (0..self.files.len())
-            .filter(|&i| needle.split_whitespace().all(|w| self.files[i].haystack.contains(w)))
+            .filter(|&i| {
+                needle
+                    .split_whitespace()
+                    .all(|w| self.files[i].haystack.contains(w))
+            })
             .collect();
         let pos = keep.and_then(|n| self.visible.iter().position(|&i| self.files[i].name == n));
-        self.file_state.select(pos.or((!self.visible.is_empty()).then_some(0)));
+        self.file_state
+            .select(pos.or((!self.visible.is_empty()).then_some(0)));
         let now = self.selected_file().map(|f| f.name.as_str());
         if now != self.loaded.as_ref().map(|l| l.name.as_str()) {
             self.load_selected();
@@ -284,12 +299,18 @@ impl App {
 
     /// Fault cards stored for the selected module.
     pub fn selected_fault_count(&self) -> usize {
-        self.selected_module().and_then(|m| self.memory.faults.get(&m.id)).map_or(0, Vec::len)
+        self.selected_module()
+            .and_then(|m| self.memory.faults.get(&m.id))
+            .map_or(0, Vec::len)
     }
 
     fn scroll_faults(&mut self, delta: isize) {
         let n = self.selected_fault_count();
-        self.fault_scroll = if n == 0 { 0 } else { (self.fault_scroll as isize + delta).clamp(0, n as isize - 1) as usize };
+        self.fault_scroll = if n == 0 {
+            0
+        } else {
+            (self.fault_scroll as isize + delta).clamp(0, n as isize - 1) as usize
+        };
     }
 
     /// Moves the module selection. Scroll goes back to the top when the module changes.
@@ -364,7 +385,11 @@ impl App {
             _ => return,
         };
         let step = |cur: Option<usize>, len: usize| -> Option<usize> {
-            (len > 0).then(|| (cur.unwrap_or(0) as isize).saturating_add(delta).clamp(0, len as isize - 1) as usize)
+            (len > 0).then(|| {
+                (cur.unwrap_or(0) as isize)
+                    .saturating_add(delta)
+                    .clamp(0, len as isize - 1) as usize
+            })
         };
         match self.focus {
             Focus::Files => {
@@ -383,10 +408,16 @@ impl App {
             }
             Focus::Detail => match self.items {
                 Items::Jobs => {
-                    self.detail_scroll = (self.detail_scroll as isize).saturating_add(delta).clamp(0, u16::MAX as isize) as u16;
+                    self.detail_scroll = (self.detail_scroll as isize)
+                        .saturating_add(delta)
+                        .clamp(0, u16::MAX as isize)
+                        as u16;
                 }
                 Items::Tables => {
-                    let rows = self.sgbd().zip(self.item_state.selected()).map_or(0, |(s, i)| s.tables[i].rows.len());
+                    let rows = self
+                        .sgbd()
+                        .zip(self.item_state.selected())
+                        .map_or(0, |(s, i)| s.tables[i].rows.len());
                     let next = step(self.table_state.selected(), rows);
                     self.table_state.select(next);
                 }

@@ -139,7 +139,10 @@ impl Ediabas {
     /// and clears the group mapping.
     pub fn set_ecu_dir(&mut self, dir: impl Into<PathBuf>) {
         let dir = dir.into();
-        let changed = !self.ecu_dir.to_string_lossy().eq_ignore_ascii_case(&dir.to_string_lossy());
+        let changed = !self
+            .ecu_dir
+            .to_string_lossy()
+            .eq_ignore_ascii_case(&dir.to_string_lossy());
         let dir_str = dir.to_string_lossy().into_owned();
         self.set_config_raw("EcuPath", Some(&dir_str));
         if changed {
@@ -181,7 +184,9 @@ impl Ediabas {
         }
         if key.eq_ignore_ascii_case("Simulation") {
             let new = string_to_value(value.unwrap_or("")) != 0;
-            let old = self.config_property("Simulation").is_some_and(|v| string_to_value(v) != 0);
+            let old = self
+                .config_property("Simulation")
+                .is_some_and(|v| string_to_value(v) != 0);
             if new != old {
                 self.close_sgbd = true;
             }
@@ -191,7 +196,12 @@ impl Ediabas {
 
     fn set_config_raw(&mut self, key: &str, value: Option<&str>) {
         let key = key.to_uppercase();
-        let existing = self.vm.config.keys().find(|k| k.eq_ignore_ascii_case(&key)).cloned();
+        let existing = self
+            .vm
+            .config
+            .keys()
+            .find(|k| k.eq_ignore_ascii_case(&key))
+            .cloned();
         match (existing, value) {
             (Some(k), Some(v)) if !v.is_empty() => {
                 self.vm.config.remove(&k);
@@ -253,8 +263,11 @@ impl Ediabas {
 
     /// C#: `ResultsRequests` setter.
     pub fn set_results_requests(&mut self, value: &str) {
-        self.vm.requested_results =
-            value.split(';').filter(|w| !w.is_empty()).map(str::to_uppercase).collect();
+        self.vm.requested_results = value
+            .split(';')
+            .filter(|w| !w.is_empty())
+            .map(str::to_uppercase)
+            .collect();
     }
 
     /// C#: `CloseSgbd`: the SGBD is closed (ENDE job run) before the next job.
@@ -326,7 +339,10 @@ impl Ediabas {
                 // C# quirk: stores the file name argument as the family name.
                 self.group_mapping.insert(
                     key,
-                    VariantInfo { variant_name: variant_name.clone(), family_name: file_name.to_string() },
+                    VariantInfo {
+                        variant_name: variant_name.clone(),
+                        family_name: file_name.to_string(),
+                    },
                 );
             }
 
@@ -349,12 +365,21 @@ impl Ediabas {
         let base = file_stem(file_name);
         let local = find_file(&dir, &format!("{base}{PRG_FILE_EXT}"))
             .or_else(|| find_file(&dir, &format!("{base}{GROUP_FILE_EXT}")))
-            .ok_or_else(|| VmError::File(format!("GetFileType: File not found: {}", full.display())))?;
-        let data = std::fs::read(&local)
-            .map_err(|e| VmError::File(format!("GetFileType: Unable to read file {}: {e}", local.display())))?;
+            .ok_or_else(|| {
+                VmError::File(format!("GetFileType: File not found: {}", full.display()))
+            })?;
+        let data = std::fs::read(&local).map_err(|e| {
+            VmError::File(format!(
+                "GetFileType: Unable to read file {}: {e}",
+                local.display()
+            ))
+        })?;
         match data.get(0x10..0x14) {
             Some(b) => Ok(u32::from_le_bytes([b[0], b[1], b[2], b[3]])),
-            None => Err(VmError::File(format!("GetFileType: Invalid read size: {}", local.display()))),
+            None => Err(VmError::File(format!(
+                "GetFileType: Invalid read size: {}",
+                local.display()
+            ))),
         }
     }
 
@@ -363,13 +388,23 @@ impl Ediabas {
     ///
     /// On error the result sets are still built (C# does this in a
     /// `finally`); read them with `result_sets()`.
-    pub fn execute_job(&mut self, job_name: &str, args: &str, results_wanted: &str) -> VmResult<Vec<ResultSet>> {
+    pub fn execute_job(
+        &mut self,
+        job_name: &str,
+        args: &str,
+        results_wanted: &str,
+    ) -> VmResult<Vec<ResultSet>> {
         let bin = crate::ENCODING.encode(args).0.into_owned();
         self.execute_job_bin(job_name, &bin, results_wanted)
     }
 
     /// Like `execute_job` with a binary argument (C#: `ArgBinary`).
-    pub fn execute_job_bin(&mut self, job_name: &str, args: &[u8], results_wanted: &str) -> VmResult<Vec<ResultSet>> {
+    pub fn execute_job_bin(
+        &mut self,
+        job_name: &str,
+        args: &[u8],
+        results_wanted: &str,
+    ) -> VmResult<Vec<ResultSet>> {
         self.vm.args.binary = args.to_vec();
         self.set_results_requests(results_wanted);
         self.vm.job_std = false;
@@ -429,18 +464,32 @@ impl Ediabas {
         })?;
         let sgbd = Arc::new(Sgbd::open(&path)?);
 
-        let mut jobs: Vec<JobInfo> =
-            sgbd.jobs.iter().map(|j| JobInfo { name: j.name.clone(), address: j.address, uses: None }).collect();
+        let mut jobs: Vec<JobInfo> = sgbd
+            .jobs
+            .iter()
+            .map(|j| JobInfo {
+                name: j.name.clone(),
+                address: j.address,
+                uses: None,
+            })
+            .collect();
         for uses_name in &sgbd.uses {
             let file = format!("{}{PRG_FILE_EXT}", uses_name.to_lowercase());
             // C# logs and skips uses files that are missing or unreadable.
-            let Some(uses_path) = find_file(&self.ecu_dir, &file) else { continue };
-            let Ok(uses_sgbd) = Sgbd::open(&uses_path) else { continue };
+            let Some(uses_path) = find_file(&self.ecu_dir, &file) else {
+                continue;
+            };
+            let Ok(uses_sgbd) = Sgbd::open(&uses_path) else {
+                continue;
+            };
             let uses_sgbd = Arc::new(uses_sgbd);
             jobs.extend(uses_sgbd.jobs.iter().map(|j| JobInfo {
                 name: j.name.clone(),
                 address: j.address,
-                uses: Some(UsesInfo { name: uses_name.clone(), sgbd: uses_sgbd.clone() }),
+                uses: Some(UsesInfo {
+                    name: uses_name.clone(),
+                    sgbd: uses_sgbd.clone(),
+                }),
             }));
         }
 
@@ -454,7 +503,11 @@ impl Ediabas {
     /// C#: `CloseSgbdFs`.
     fn close_sgbd_fs(&mut self) -> VmResult<()> {
         if self.sgbd_open {
-            let r = if !self.vm.request_init { self.execute_exit_job() } else { Ok(()) };
+            let r = if !self.vm.request_init {
+                self.execute_exit_job()
+            } else {
+                Ok(())
+            };
             self.sgbd_open = false;
             self.jobs.clear();
             r?;
@@ -492,7 +545,11 @@ impl Ediabas {
         let job_std_old = self.vm.job_std;
         self.vm.job_std = true;
         self.vm.job_std_exit = true;
-        let r = if self.is_job_existing(JOB_NAME_EXIT) { self.execute_job_private(JOB_NAME_EXIT, false) } else { Ok(()) };
+        let r = if self.is_job_existing(JOB_NAME_EXIT) {
+            self.execute_job_private(JOB_NAME_EXIT, false)
+        } else {
+            Ok(())
+        };
         self.vm.job_std = job_std_old;
         self.vm.job_std_exit = false;
         r
@@ -510,10 +567,18 @@ impl Ediabas {
         let mut family_name = String::new();
         if self.result_sets.len() > 1 {
             let set = &self.result_sets[1];
-            if let Some(ResultData { value: ResultValue::Str(s), .. }) = set.get("FAMILIE") {
+            if let Some(ResultData {
+                value: ResultValue::Str(s),
+                ..
+            }) = set.get("FAMILIE")
+            {
                 family_name = s.clone();
             }
-            if let Some(ResultData { value: ResultValue::Str(s), .. }) = set.get("VARIANTE") {
+            if let Some(ResultData {
+                value: ResultValue::Str(s),
+                ..
+            }) = set.get("VARIANTE")
+            {
                 return Ok((s.clone(), family_name));
             }
         }
@@ -529,8 +594,9 @@ impl Ediabas {
         self.open_sgbd_fs()?;
 
         let bip_version = self.vm.sgbd.version.bip_version;
-        let ediabas_bip_version =
-            ((EDIABAS_VERSION >> 8) & 0xF) << 16 | ((EDIABAS_VERSION >> 4) & 0xF) << 8 | (EDIABAS_VERSION & 0xF);
+        let ediabas_bip_version = ((EDIABAS_VERSION >> 8) & 0xF) << 16
+            | ((EDIABAS_VERSION >> 4) & 0xF) << 8
+            | (EDIABAS_VERSION & 0xF);
         if bip_version > ediabas_bip_version {
             return self.vm.set_error(ErrorCode::EDIABAS_BIP_0009);
         }
@@ -579,18 +645,29 @@ impl Ediabas {
             Some(u) => u.name.clone(),
             None => file_stem(&self.sgbd_file_name),
         };
-        let sys_results = self.config_property("SystemResults").map(string_to_value).unwrap_or(0);
+        let sys_results = self
+            .config_property("SystemResults")
+            .map(string_to_value)
+            .unwrap_or(0);
 
-        dict.0.push(s("VARIANTE", file_stem(&self.sgbd_file_name).to_uppercase()));
+        dict.0.push(s(
+            "VARIANTE",
+            file_stem(&self.sgbd_file_name).to_uppercase(),
+        ));
         if IS_MIN_VERSION_760 {
             dict.0.push(s("GRUPPE", self.group_name.to_lowercase()));
             dict.0.push(s("FAMILIE", self.family_name.to_lowercase()));
         }
         dict.0.push(s("OBJECT", object_name));
         dict.0.push(s("JOBNAME", job_info.name.clone()));
-        dict.0.push(ResultData::new(ResultType::W, "SAETZE", ResultValue::Int(set_count as i64)));
+        dict.0.push(ResultData::new(
+            ResultType::W,
+            "SAETZE",
+            ResultValue::Int(set_count as i64),
+        ));
         if sys_results != 0 {
-            dict.0.push(s("JOBSTATUS", self.vm.result_job_status.clone()));
+            dict.0
+                .push(s("JOBSTATUS", self.vm.result_job_status.clone()));
             // C# reads these from the interface only in simulation mode; not ported.
             dict.0.push(i("UBATTCURRENT", -1));
             dict.0.push(i("UBATTHISTORY", -1));
@@ -612,7 +689,10 @@ fn is_init_or_exit(name: &str) -> bool {
 
 /// C#: `Path.GetFileNameWithoutExtension`.
 fn file_stem(name: &str) -> String {
-    Path::new(name).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()
+    Path::new(name)
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default()
 }
 
 /// Finds `name` in `dir`, ignoring ASCII case (ECU files ship as `.prg` or `.PRG`).
@@ -640,12 +720,15 @@ fn string_to_value(number: &str) -> i64 {
     let lower = local.to_lowercase();
     if let Some(hex) = lower.strip_prefix("0x") {
         match hex.chars().next() {
-            Some(c) if c.is_ascii_digit() || ('a'..='f').contains(&c) => i64::from_str_radix(hex, 16).unwrap_or(0),
+            Some(c) if c.is_ascii_digit() || ('a'..='f').contains(&c) => {
+                i64::from_str_radix(hex, 16).unwrap_or(0)
+            }
             _ => 0,
         }
     } else if let Some(bin) = lower.strip_prefix("0y") {
         i64::from_str_radix(bin, 2).unwrap_or(0)
-    } else if lower == "-" || lower == "--" || lower.chars().next().is_some_and(char::is_alphabetic) {
+    } else if lower == "-" || lower == "--" || lower.chars().next().is_some_and(char::is_alphabetic)
+    {
         0
     } else {
         let conv = local.trim_start();
@@ -747,7 +830,9 @@ mod tests {
     }
 
     fn val<'a>(set: &'a ResultSet, name: &str) -> &'a ResultValue {
-        &set.get(name).unwrap_or_else(|| panic!("missing {name}")).value
+        &set.get(name)
+            .unwrap_or_else(|| panic!("missing {name}"))
+            .value
     }
 
     #[test]
@@ -772,7 +857,10 @@ mod tests {
     fn results_requests_split_and_upper() {
         let mut ed = Ediabas::new(tmp_dir("req"));
         ed.set_results_requests("a;;Status_x");
-        assert_eq!(ed.vm().requested_results, vec!["A".to_string(), "STATUS_X".to_string()]);
+        assert_eq!(
+            ed.vm().requested_results,
+            vec!["A".to_string(), "STATUS_X".to_string()]
+        );
     }
 
     #[test]
@@ -781,7 +869,13 @@ mod tests {
         let file = sgbd_file(
             false,
             &[],
-            &[init_ok(), ("INFO", [ergs("ECU", "test ecu"), eoj_status("OKAY")].concat())],
+            &[
+                init_ok(),
+                (
+                    "INFO",
+                    [ergs("ECU", "test ecu"), eoj_status("OKAY")].concat(),
+                ),
+            ],
         );
         std::fs::write(dir.join("TEST.PRG"), file).unwrap();
 
@@ -830,7 +924,10 @@ mod tests {
         let mut ed = Ediabas::new(&dir);
         ed.resolve_sgbd("t").unwrap();
         let r = ed.execute_job("INFO", "", "");
-        assert!(matches!(r, Err(VmError::Raised(ErrorCode::EDIABAS_SYS_0010))), "{r:?}");
+        assert!(
+            matches!(r, Err(VmError::Raised(ErrorCode::EDIABAS_SYS_0010))),
+            "{r:?}"
+        );
         assert!(ed.vm().request_init);
     }
 
@@ -841,7 +938,10 @@ mod tests {
         let mut ed = Ediabas::new(&dir);
         ed.resolve_sgbd("t").unwrap();
         let r = ed.execute_job("NOPE", "", "");
-        assert!(matches!(r, Err(VmError::Raised(ErrorCode::EDIABAS_SYS_0008))), "{r:?}");
+        assert!(
+            matches!(r, Err(VmError::Raised(ErrorCode::EDIABAS_SYS_0008))),
+            "{r:?}"
+        );
     }
 
     #[test]
@@ -852,7 +952,10 @@ mod tests {
             false,
             &[],
             &[
-                ("INITIALISIERUNG", [ergs("FROM", "base-init"), eoj()].concat()),
+                (
+                    "INITIALISIERUNG",
+                    [ergs("FROM", "base-init"), eoj()].concat(),
+                ),
                 ("OWN", [ergs("FROM", "base"), eoj()].concat()),
                 ("BASEJOB", [ergs("FROM", "base"), eoj()].concat()),
             ],
@@ -883,9 +986,25 @@ mod tests {
         let grp = sgbd_file(
             true,
             &[],
-            &[init_ok(), ("IDENTIFIKATION", [ergs("VARIANTE", "VAR1"), ergs("FAMILIE", ""), eoj()].concat())],
+            &[
+                init_ok(),
+                (
+                    "IDENTIFIKATION",
+                    [ergs("VARIANTE", "VAR1"), ergs("FAMILIE", ""), eoj()].concat(),
+                ),
+            ],
         );
-        let prg = sgbd_file(false, &[], &[init_ok(), ("FS_LESEN", [ergs("A", "1"), enewset(), ergs("A", "2"), eoj()].concat())]);
+        let prg = sgbd_file(
+            false,
+            &[],
+            &[
+                init_ok(),
+                (
+                    "FS_LESEN",
+                    [ergs("A", "1"), enewset(), ergs("A", "2"), eoj()].concat(),
+                ),
+            ],
+        );
         std::fs::write(dir.join("D_TEST.GRP"), grp).unwrap();
         std::fs::write(dir.join("var1.prg"), prg).unwrap();
 
@@ -919,7 +1038,11 @@ mod tests {
         let dir = tmp_dir("fail");
         // Opcode 0xFF is out of range: the job fails after one finished set.
         let bad = [ergs("A", "1"), enewset(), vec![0xFF, 0x00]].concat();
-        std::fs::write(dir.join("t.prg"), sgbd_file(false, &[], &[init_ok(), ("BAD", bad)])).unwrap();
+        std::fs::write(
+            dir.join("t.prg"),
+            sgbd_file(false, &[], &[init_ok(), ("BAD", bad)]),
+        )
+        .unwrap();
         let mut ed = Ediabas::new(&dir);
         ed.resolve_sgbd("t").unwrap();
         assert!(ed.execute_job("BAD", "", "").is_err());

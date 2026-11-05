@@ -74,7 +74,11 @@ impl StringData {
 
     /// C#: `GetData(complete)`. `complete` returns the whole buffer.
     pub fn get(&self, complete: bool) -> Vec<u8> {
-        if complete { self.data.clone() } else { self.data[..self.len].to_vec() }
+        if complete {
+            self.data.clone()
+        } else {
+            self.data[..self.len].to_vec()
+        }
     }
 
     /// C#: `SetData`. Returns false if the value does not fit
@@ -105,7 +109,11 @@ pub struct Regs {
 
 impl Default for Regs {
     fn default() -> Self {
-        Self { bytes: [0; 32], floats: [0.0; 16], strings: Default::default() }
+        Self {
+            bytes: [0; 32],
+            floats: [0.0; 16],
+            strings: Default::default(),
+        }
     }
 }
 

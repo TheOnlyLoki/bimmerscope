@@ -22,6 +22,10 @@ fn main() {
     }
     println!("ok: {ok}");
     for (err, files) in &failures {
-        println!("{:5}  {err}  e.g. {}", files.len(), files[..files.len().min(3)].join(", "));
+        println!(
+            "{:5}  {err}  e.g. {}",
+            files.len(),
+            files[..files.len().min(3)].join(", ")
+        );
     }
 }

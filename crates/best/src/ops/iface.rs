@@ -41,7 +41,12 @@ fn ok_or_set<T>(vm: &mut Vm, r: IfResult<T>) -> VmResult<Option<T>> {
 }
 
 /// C#: `OpXconnect` (xconnect)
-pub(crate) fn op_xconnect(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xconnect(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if vm.iface.is_none() {
         return internal("OpXconnect: No communication class present");
     }
@@ -51,7 +56,12 @@ pub(crate) fn op_xconnect(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &m
 }
 
 /// C#: `OpXhangup` (xhangup)
-pub(crate) fn op_xhangup(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xhangup(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if vm.iface.is_none() {
         return internal("OpXhangup: No communication class present");
     }
@@ -61,7 +71,12 @@ pub(crate) fn op_xhangup(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mu
 }
 
 /// C#: `OpXsetpar` (xsetpar)
-pub(crate) fn op_xsetpar(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xsetpar(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if !is_connected(vm) {
         return vm.set_error(ErrorCode::EDIABAS_IFH_0056);
     }
@@ -86,14 +101,21 @@ fn parse_comm_parameter(data: &[u8]) -> Vec<u32> {
     } else {
         0
     };
-    if data_type_len == 0 || data.len() % data_type_len != 0 {
+    if data_type_len == 0 || !data.len().is_multiple_of(data_type_len) {
         return Vec::new();
     }
-    data.chunks_exact(data_type_len).map(|c| c.iter().rev().fold(0u32, |acc, &b| acc << 8 | b as u32)).collect()
+    data.chunks_exact(data_type_len)
+        .map(|c| c.iter().rev().fold(0u32, |acc, &b| acc << 8 | b as u32))
+        .collect()
 }
 
 /// C#: `OpXawlen` (xawlen)
-pub(crate) fn op_xawlen(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xawlen(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if !is_connected(vm) {
         return vm.set_error(ErrorCode::EDIABAS_IFH_0056);
     }
@@ -101,14 +123,22 @@ pub(crate) fn op_xawlen(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut
     if data.len() & 0x01 != 0 {
         return internal("OpXawlen: Invalid data length");
     }
-    let answer: Vec<i16> = data.chunks_exact(2).map(|c| i16::from_le_bytes([c[0], c[1]])).collect();
+    let answer: Vec<i16> = data
+        .chunks_exact(2)
+        .map(|c| i16::from_le_bytes([c[0], c[1]]))
+        .collect();
     let r = iface_mut(vm)?.set_comm_answer_len(answer);
     ok_or_set(vm, r)?;
     Ok(())
 }
 
 /// C#: `OpXbatt` (xbatt)
-pub(crate) fn op_xbatt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xbatt(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpXbat: Invalid type");
     }
@@ -126,7 +156,12 @@ pub(crate) fn op_xbatt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpXboot` (xboot)
-pub(crate) fn op_xboot(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xboot(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if vm.iface.is_none() {
         return vm.set_error(ErrorCode::EDIABAS_IFH_0056);
     }
@@ -136,7 +171,12 @@ pub(crate) fn op_xboot(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpXgetport` (xgetport)
-pub(crate) fn op_xgetport(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xgetport(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpXgetport: Invalid type");
     }
@@ -153,7 +193,12 @@ pub(crate) fn op_xgetport(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &m
 }
 
 /// C#: `OpXignit` (xignit)
-pub(crate) fn op_xignit(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xignit(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpXignit: Invalid type");
     }
@@ -171,7 +216,12 @@ pub(crate) fn op_xignit(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpXkeyb` (xkeyb)
-pub(crate) fn op_xkeyb(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xkeyb(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpXkeyb: Invalid type");
     }
@@ -188,7 +238,12 @@ pub(crate) fn op_xkeyb(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpXloopt` (xloopt)
-pub(crate) fn op_xloopt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xloopt(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpXloopt: Invalid type");
     }
@@ -203,7 +258,12 @@ pub(crate) fn op_xloopt(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpXprog` (xprog)
-pub(crate) fn op_xprog(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xprog(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if vm.iface.is_none() {
         return vm.set_error(ErrorCode::EDIABAS_IFH_0056);
     }
@@ -214,7 +274,12 @@ pub(crate) fn op_xprog(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpXraw` (xraw)
-pub(crate) fn op_xraw(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xraw(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpXraw: Invalid type");
     }
@@ -230,7 +295,12 @@ pub(crate) fn op_xraw(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpXreps` (xreps)
-pub(crate) fn op_xreps(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xreps(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if !is_connected(vm) {
         return vm.set_error(ErrorCode::EDIABAS_IFH_0056);
     }
@@ -240,7 +310,12 @@ pub(crate) fn op_xreps(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpXrequf` (xrequf)
-pub(crate) fn op_xrequf(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xrequf(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpXrequf: Invalid type");
     }
@@ -255,7 +330,12 @@ pub(crate) fn op_xrequf(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpXreset` (xreset)
-pub(crate) fn op_xreset(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xreset(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if vm.iface.is_none() {
         return vm.set_error(ErrorCode::EDIABAS_IFH_0056);
     }
@@ -265,7 +345,12 @@ pub(crate) fn op_xreset(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpXsend` (xsend)
-pub(crate) fn op_xsend(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xsend(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpXsend: Invalid type");
     }
@@ -281,7 +366,12 @@ pub(crate) fn op_xsend(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpXsendf` (xsendf). C# reads the request from arg0, not arg1.
-pub(crate) fn op_xsendf(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xsendf(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if !is_connected(vm) {
         return vm.set_error(ErrorCode::EDIABAS_IFH_0056);
     }
@@ -292,7 +382,12 @@ pub(crate) fn op_xsendf(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpXsetport` (xsetport)
-pub(crate) fn op_xsetport(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xsetport(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if vm.iface.is_none() {
         return vm.set_error(ErrorCode::EDIABAS_IFH_0056);
     }
@@ -305,7 +400,12 @@ pub(crate) fn op_xsetport(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &m
 }
 
 /// C#: `OpXsireset` (xsireset)
-pub(crate) fn op_xsireset(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xsireset(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if vm.iface.is_none() {
         return vm.set_error(ErrorCode::EDIABAS_IFH_0056);
     }
@@ -316,7 +416,12 @@ pub(crate) fn op_xsireset(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &m
 }
 
 /// C#: `OpXstate` (xstate)
-pub(crate) fn op_xstate(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xstate(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpXstate: Invalid type");
     }
@@ -331,7 +436,12 @@ pub(crate) fn op_xstate(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpXstopf` (xstopf)
-pub(crate) fn op_xstopf(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xstopf(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if !is_connected(vm) {
         return vm.set_error(ErrorCode::EDIABAS_IFH_0056);
     }
@@ -341,7 +451,12 @@ pub(crate) fn op_xstopf(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut
 }
 
 /// C#: `OpXtype` (xtype)
-pub(crate) fn op_xtype(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xtype(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpXtype: Invalid type");
     }
@@ -354,7 +469,12 @@ pub(crate) fn op_xtype(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpXvers` (xvers)
-pub(crate) fn op_xvers(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_xvers(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpXvers: Invalid type");
     }
@@ -518,16 +638,25 @@ mod tests {
     fn vm_with(mock: Mock) -> (Vm, Log) {
         let log: Log = Rc::new(RefCell::new(Vec::new()));
         let mut vm = Vm::for_test();
-        vm.iface = Some(Box::new(Mock { log: Some(log.clone()), ..mock }));
+        vm.iface = Some(Box::new(Mock {
+            log: Some(log.clone()),
+            ..mock
+        }));
         (vm, log)
     }
 
     fn connected() -> Mock {
-        Mock { connected: true, ..Default::default() }
+        Mock {
+            connected: true,
+            ..Default::default()
+        }
     }
 
     fn assert_ifh_0056(r: VmResult<()>) {
-        assert!(matches!(r, Err(VmError::Raised(ErrorCode::EDIABAS_IFH_0056))), "got {r:?}");
+        assert!(
+            matches!(r, Err(VmError::Raised(ErrorCode::EDIABAS_IFH_0056))),
+            "got {r:?}"
+        );
     }
 
     fn s0() -> Operand {
@@ -540,7 +669,10 @@ mod tests {
 
     #[test]
     fn xsend_round_trip() {
-        let (mut vm, log) = vm_with(Mock { response: vec![0x12, 0x34], ..connected() });
+        let (mut vm, log) = vm_with(Mock {
+            response: vec![0x12, 0x34],
+            ..connected()
+        });
         let (mut a0, mut a1) = (s0(), Operand::imm_str(&[0x01, 0x02]));
         op_xsend(&mut vm, oc(), &mut a0, &mut a1).unwrap();
         assert_eq!(log.borrow().as_slice(), ["send [01, 02]"]);
@@ -549,10 +681,16 @@ mod tests {
 
     #[test]
     fn xsend_interface_error_is_raised_and_leaves_arg0() {
-        let (mut vm, _log) = vm_with(Mock { fail: Some(ErrorCode::EDIABAS_IFH_0001), ..connected() });
+        let (mut vm, _log) = vm_with(Mock {
+            fail: Some(ErrorCode::EDIABAS_IFH_0001),
+            ..connected()
+        });
         let (mut a0, mut a1) = (s0(), Operand::imm_str(&[0x01]));
         let r = op_xsend(&mut vm, oc(), &mut a0, &mut a1);
-        assert!(matches!(r, Err(VmError::Raised(ErrorCode::EDIABAS_IFH_0001))));
+        assert!(matches!(
+            r,
+            Err(VmError::Raised(ErrorCode::EDIABAS_IFH_0001))
+        ));
         assert_eq!(vm.op_array(&a0).unwrap(), Vec::<u8>::new());
     }
 
@@ -575,7 +713,10 @@ mod tests {
     fn xsend_invalid_arg0_is_internal_error() {
         let (mut vm, _log) = vm_with(connected());
         let (mut a0, mut a1) = (Operand::imm8(1), Operand::imm_str(&[0x01]));
-        assert!(matches!(op_xsend(&mut vm, oc(), &mut a0, &mut a1), Err(VmError::Internal(_))));
+        assert!(matches!(
+            op_xsend(&mut vm, oc(), &mut a0, &mut a1),
+            Err(VmError::Internal(_))
+        ));
     }
 
     #[test]
@@ -583,29 +724,44 @@ mod tests {
         let (mut vm, _log) = vm_with(connected());
         let (mut a0, mut a1) = (Operand::imm_str(&[0x05, 0xFF, 0x07]), Operand::none());
         op_xsetpar(&mut vm, oc(), &mut a0, &mut a1).unwrap();
-        assert_eq!(vm.iface.as_ref().unwrap().comm_parameter(), &[0x05, 0xFF, 0x07]);
+        assert_eq!(
+            vm.iface.as_ref().unwrap().comm_parameter(),
+            &[0x05, 0xFF, 0x07]
+        );
     }
 
     #[test]
     fn xsetpar_int_elements() {
         let (mut vm, _log) = vm_with(connected());
-        let (mut a0, mut a1) = (Operand::imm_str(&[0x34, 0x12, 0x78, 0x56, 0x00, 0x00]), Operand::none());
+        let (mut a0, mut a1) = (
+            Operand::imm_str(&[0x34, 0x12, 0x78, 0x56, 0x00, 0x00]),
+            Operand::none(),
+        );
         // Type byte is 0x12 here, so this is an unknown type: empty list.
         op_xsetpar(&mut vm, oc(), &mut a0, &mut a1).unwrap();
         assert!(vm.iface.as_ref().unwrap().comm_parameter().is_empty());
 
         let (mut a0, mut a1) = (Operand::imm_str(&[0x34, 0x00, 0x12, 0x00]), Operand::none());
         op_xsetpar(&mut vm, oc(), &mut a0, &mut a1).unwrap();
-        assert_eq!(vm.iface.as_ref().unwrap().comm_parameter(), &[0x0034, 0x0012]);
+        assert_eq!(
+            vm.iface.as_ref().unwrap().comm_parameter(),
+            &[0x0034, 0x0012]
+        );
     }
 
     #[test]
     fn xsetpar_long_elements() {
         let (mut vm, _log) = vm_with(connected());
         // Two 32 bit elements, little endian. Byte 1 is the type 0x01.
-        let (mut a0, mut a1) = (Operand::imm_str(&[0x00, 0x01, 0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD]), Operand::none());
+        let (mut a0, mut a1) = (
+            Operand::imm_str(&[0x00, 0x01, 0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD]),
+            Operand::none(),
+        );
         op_xsetpar(&mut vm, oc(), &mut a0, &mut a1).unwrap();
-        assert_eq!(vm.iface.as_ref().unwrap().comm_parameter(), &[0x5678_0100, 0xCDEF_1234]);
+        assert_eq!(
+            vm.iface.as_ref().unwrap().comm_parameter(),
+            &[0x5678_0100, 0xCDEF_1234]
+        );
     }
 
     #[test]
@@ -636,7 +792,10 @@ mod tests {
     fn xawlen_odd_length_is_internal_error() {
         let (mut vm, _log) = vm_with(connected());
         let (mut a0, mut a1) = (Operand::imm_str(&[0x01]), Operand::none());
-        assert!(matches!(op_xawlen(&mut vm, oc(), &mut a0, &mut a1), Err(VmError::Internal(_))));
+        assert!(matches!(
+            op_xawlen(&mut vm, oc(), &mut a0, &mut a1),
+            Err(VmError::Internal(_))
+        ));
     }
 
     #[test]
@@ -653,7 +812,10 @@ mod tests {
         assert_eq!(log.borrow().as_slice(), ["connect"]);
 
         let mut vm = Vm::for_test();
-        assert!(matches!(op_xconnect(&mut vm, oc(), &mut Operand::none(), &mut Operand::none()), Err(VmError::Internal(_))));
+        assert!(matches!(
+            op_xconnect(&mut vm, oc(), &mut Operand::none(), &mut Operand::none()),
+            Err(VmError::Internal(_))
+        ));
     }
 
     #[test]
@@ -663,17 +825,26 @@ mod tests {
         assert_eq!(log.borrow().as_slice(), ["disconnect"]);
 
         let mut vm = Vm::for_test();
-        assert!(matches!(op_xhangup(&mut vm, oc(), &mut Operand::none(), &mut Operand::none()), Err(VmError::Internal(_))));
+        assert!(matches!(
+            op_xhangup(&mut vm, oc(), &mut Operand::none(), &mut Operand::none()),
+            Err(VmError::Internal(_))
+        ));
     }
 
     #[test]
     fn xbatt_stores_voltage_and_skips_unknown() {
-        let (mut vm, _log) = vm_with(Mock { battery: 12_345, ..Default::default() });
+        let (mut vm, _log) = vm_with(Mock {
+            battery: 12_345,
+            ..Default::default()
+        });
         let (mut a0, mut a1) = (l0(), Operand::none());
         op_xbatt(&mut vm, oc(), &mut a0, &mut a1).unwrap();
         assert_eq!(vm.op_value(&a0, 0).unwrap(), 12_345);
 
-        let (mut vm, _log) = vm_with(Mock { battery: i64::MIN, ..Default::default() });
+        let (mut vm, _log) = vm_with(Mock {
+            battery: i64::MIN,
+            ..Default::default()
+        });
         let (mut a0, mut a1) = (l0(), Operand::none());
         vm.regs.set_value(Reg::L(0), 7).unwrap();
         op_xbatt(&mut vm, oc(), &mut a0, &mut a1).unwrap();
@@ -689,7 +860,10 @@ mod tests {
 
     #[test]
     fn xgetport_reads_port_masked_to_byte() {
-        let (mut vm, log) = vm_with(Mock { port: 0x1_0042, ..connected() });
+        let (mut vm, log) = vm_with(Mock {
+            port: 0x1_0042,
+            ..connected()
+        });
         let (mut a0, mut a1) = (l0(), Operand::imm16(0x1FF));
         op_xgetport(&mut vm, oc(), &mut a0, &mut a1).unwrap();
         assert_eq!(log.borrow().as_slice(), ["getport 255"]);
@@ -698,7 +872,10 @@ mod tests {
 
     #[test]
     fn xignit_stores_voltage() {
-        let (mut vm, _log) = vm_with(Mock { ignition: 13_000, ..Default::default() });
+        let (mut vm, _log) = vm_with(Mock {
+            ignition: 13_000,
+            ..Default::default()
+        });
         let (mut a0, mut a1) = (l0(), Operand::none());
         op_xignit(&mut vm, oc(), &mut a0, &mut a1).unwrap();
         assert_eq!(vm.op_value(&a0, 0).unwrap(), 13_000);
@@ -714,7 +891,10 @@ mod tests {
 
     #[test]
     fn xloopt_stores_loop_result() {
-        let (mut vm, _log) = vm_with(Mock { loop_result: 42, ..Default::default() });
+        let (mut vm, _log) = vm_with(Mock {
+            loop_result: 42,
+            ..Default::default()
+        });
         let (mut a0, mut a1) = (l0(), Operand::none());
         op_xloopt(&mut vm, oc(), &mut a0, &mut a1).unwrap();
         assert_eq!(vm.op_value(&a0, 0).unwrap(), 42);
@@ -730,7 +910,10 @@ mod tests {
 
     #[test]
     fn xraw_round_trip() {
-        let (mut vm, log) = vm_with(Mock { response: vec![0xAA], ..connected() });
+        let (mut vm, log) = vm_with(Mock {
+            response: vec![0xAA],
+            ..connected()
+        });
         let (mut a0, mut a1) = (s0(), Operand::imm_str(&[0x3E]));
         op_xraw(&mut vm, oc(), &mut a0, &mut a1).unwrap();
         assert_eq!(log.borrow().as_slice(), ["raw [3E]"]);
@@ -747,7 +930,10 @@ mod tests {
 
     #[test]
     fn xrequf_receives_frequent_data() {
-        let (mut vm, _log) = vm_with(Mock { response: vec![0x01, 0x02], ..connected() });
+        let (mut vm, _log) = vm_with(Mock {
+            response: vec![0x01, 0x02],
+            ..connected()
+        });
         let (mut a0, mut a1) = (s0(), Operand::none());
         op_xrequf(&mut vm, oc(), &mut a0, &mut a1).unwrap();
         assert_eq!(vm.op_array(&a0).unwrap(), vec![0x01, 0x02]);
@@ -793,7 +979,10 @@ mod tests {
 
     #[test]
     fn xvers_stores_version() {
-        let (mut vm, _log) = vm_with(Mock { version: 7, ..connected() });
+        let (mut vm, _log) = vm_with(Mock {
+            version: 7,
+            ..connected()
+        });
         let (mut a0, mut a1) = (l0(), Operand::none());
         op_xvers(&mut vm, oc(), &mut a0, &mut a1).unwrap();
         assert_eq!(vm.op_value(&a0, 0).unwrap(), 7);

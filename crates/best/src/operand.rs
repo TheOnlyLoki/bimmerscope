@@ -31,8 +31,22 @@ impl AddrMode {
     pub fn from_nibble(n: u8) -> AddrMode {
         use AddrMode::*;
         [
-            None, RegS, RegAb, RegI, RegL, Imm8, Imm16, Imm32, ImmStr, IdxImm, IdxReg, IdxRegImm, IdxImmLenImm,
-            IdxImmLenReg, IdxRegLenImm, IdxRegLenReg,
+            None,
+            RegS,
+            RegAb,
+            RegI,
+            RegL,
+            Imm8,
+            Imm16,
+            Imm32,
+            ImmStr,
+            IdxImm,
+            IdxReg,
+            IdxRegImm,
+            IdxImmLenImm,
+            IdxImmLenReg,
+            IdxRegLenImm,
+            IdxRegLenReg,
         ][(n & 0x0F) as usize]
     }
 
@@ -41,7 +55,14 @@ impl AddrMode {
         use AddrMode::*;
         matches!(
             self,
-            RegS | ImmStr | IdxImm | IdxReg | IdxRegImm | IdxImmLenImm | IdxImmLenReg | IdxRegLenImm | IdxRegLenReg
+            RegS | ImmStr
+                | IdxImm
+                | IdxReg
+                | IdxRegImm
+                | IdxImmLenImm
+                | IdxImmLenReg
+                | IdxRegLenImm
+                | IdxRegLenReg
         )
     }
 }
@@ -76,7 +97,12 @@ pub struct Operand {
 
 impl Default for Operand {
     fn default() -> Self {
-        Self { mode: AddrMode::None, d1: OpData::None, d2: OpData::None, d3: OpData::None }
+        Self {
+            mode: AddrMode::None,
+            d1: OpData::None,
+            d2: OpData::None,
+            d3: OpData::None,
+        }
     }
 }
 
@@ -108,11 +134,21 @@ impl Operand {
     }
 
     pub fn imm8(v: u8) -> Self {
-        Self::new(AddrMode::Imm8, OpData::Val(v as u32), OpData::None, OpData::None)
+        Self::new(
+            AddrMode::Imm8,
+            OpData::Val(v as u32),
+            OpData::None,
+            OpData::None,
+        )
     }
 
     pub fn imm16(v: u16) -> Self {
-        Self::new(AddrMode::Imm16, OpData::Val(v as u32), OpData::None, OpData::None)
+        Self::new(
+            AddrMode::Imm16,
+            OpData::Val(v as u32),
+            OpData::None,
+            OpData::None,
+        )
     }
 
     pub fn imm32(v: u32) -> Self {
@@ -120,12 +156,22 @@ impl Operand {
     }
 
     pub fn imm_str(b: &[u8]) -> Self {
-        Self::new(AddrMode::ImmStr, OpData::Bytes(b.to_vec()), OpData::None, OpData::None)
+        Self::new(
+            AddrMode::ImmStr,
+            OpData::Bytes(b.to_vec()),
+            OpData::None,
+            OpData::None,
+        )
     }
 
     /// `S[idx]`: one element of a string register (C# mode IdxImm).
     pub fn idx(reg: Reg, idx: u32) -> Self {
-        Self::new(AddrMode::IdxImm, OpData::Reg(reg), OpData::Val(idx), OpData::None)
+        Self::new(
+            AddrMode::IdxImm,
+            OpData::Reg(reg),
+            OpData::Val(idx),
+            OpData::None,
+        )
     }
 
     pub fn none() -> Self {
@@ -187,9 +233,8 @@ impl Vm {
             RegI | Imm16 => 2,
             RegL | Imm32 => 4,
             IdxImm | IdxReg | IdxRegImm if write => 1,
-            RegS | ImmStr | IdxImm | IdxReg | IdxRegImm | IdxImmLenImm | IdxImmLenReg | IdxRegLenImm | IdxRegLenReg => {
-                self.op_array(op)?.len() as u32
-            }
+            RegS | ImmStr | IdxImm | IdxReg | IdxRegImm | IdxImmLenImm | IdxImmLenReg
+            | IdxRegLenImm | IdxRegLenReg => self.op_array(op)?.len() as u32,
             None => 0,
         })
     }
@@ -199,7 +244,9 @@ impl Vm {
         use AddrMode::*;
         match op.mode {
             RegS | RegAb | RegI | RegL => {
-                let r = op.reg().ok_or_else(|| crate::VmError::Internal("Operand.GetRawData RegX: invalid data type".into()))?;
+                let r = op.reg().ok_or_else(|| {
+                    crate::VmError::Internal("Operand.GetRawData RegX: invalid data type".into())
+                })?;
                 Ok(match r {
                     Reg::S(_) => Value::Bytes(self.regs.string(r)?.get(false)),
                     Reg::F(_) => Value::Float(self.regs.float(r)?),
@@ -212,7 +259,9 @@ impl Vm {
                 _ => internal("Operand.GetRawData ImmStr: invalid data type"),
             },
             IdxImm | IdxReg | IdxRegImm => {
-                let Some(r) = op.reg() else { return internal("Operand.GetRawData IdxX: invalid data type") };
+                let Some(r) = op.reg() else {
+                    return internal("Operand.GetRawData IdxX: invalid data type");
+                };
                 let data = self.regs.string(r)?.get(true);
                 let mut index = self.opdata_value(&op.d2)?;
                 if op.mode == IdxRegImm {
@@ -229,7 +278,9 @@ impl Vm {
                 Ok(Value::Bytes(data[index as usize..].to_vec()))
             }
             IdxImmLenImm | IdxImmLenReg | IdxRegLenImm | IdxRegLenReg => {
-                let Some(r) = op.reg() else { return internal("Operand.GetRawData IdxXLenX: invalid data type") };
+                let Some(r) = op.reg() else {
+                    return internal("Operand.GetRawData IdxXLenX: invalid data type");
+                };
                 let data = self.regs.string(r)?.get(true);
                 let index = self.opdata_value(&op.d2)?;
                 let mut len = self.opdata_value(&op.d3)?;
@@ -244,7 +295,9 @@ impl Vm {
                     }
                     len = data.len() as u32 - index;
                 }
-                Ok(Value::Bytes(data[index as usize..(index + len) as usize].to_vec()))
+                Ok(Value::Bytes(
+                    data[index as usize..(index + len) as usize].to_vec(),
+                ))
             }
             None => internal("Operand.GetRawData: invalid address mode"),
         }
@@ -264,7 +317,10 @@ impl Vm {
                     return internal("Operand.GetValueData: invalid data length");
                 }
                 b.resize(b.len().max(data_len as usize), 0);
-                Ok(b[..data_len as usize].iter().rev().fold(0u32, |acc, &x| acc << 8 | x as u32))
+                Ok(b[..data_len as usize]
+                    .iter()
+                    .rev()
+                    .fold(0u32, |acc, &x| acc << 8 | x as u32))
             }
             Value::Float(_) => internal("Operand.GetValueData: invalid data type"),
         }
@@ -289,7 +345,10 @@ impl Vm {
     pub fn op_string(&mut self, op: &Operand) -> VmResult<String> {
         let data = self.op_array(op)?;
         let end = data.iter().position(|&b| b == 0).unwrap_or(data.len());
-        Ok(ENCODING.decode_without_bom_handling(&data[..end]).0.into_owned())
+        Ok(ENCODING
+            .decode_without_bom_handling(&data[..end])
+            .0
+            .into_owned())
     }
 
     /// C#: `Operand.SetRawData(data, dataLen)`. `data_len` is the byte
@@ -298,11 +357,15 @@ impl Vm {
         use AddrMode::*;
         match op.mode {
             RegS | RegAb | RegI | RegL => {
-                let Some(r) = op.reg() else { return internal("Operand.SetRawData RegX: invalid data type") };
+                let Some(r) = op.reg() else {
+                    return internal("Operand.SetRawData RegX: invalid data type");
+                };
                 self.reg_set_raw(r, data)
             }
             IdxImm | IdxReg | IdxRegImm => {
-                let Some(r) = op.reg() else { return internal("Operand.SetRawData IdxX: invalid data type") };
+                let Some(r) = op.reg() else {
+                    return internal("Operand.SetRawData IdxX: invalid data type");
+                };
                 let mut array = self.regs.string(r)?.get(false);
                 let mut index = self.opdata_value(&op.d2)?;
                 if op.mode == IdxRegImm {
@@ -311,7 +374,9 @@ impl Vm {
                 let source = match data {
                     Value::Int(v) => (0..data_len).map(|i| (v >> (i * 8)) as u8).collect(),
                     Value::Bytes(b) => b,
-                    Value::Float(_) => return internal("Operand.SetRawData IdxX: invalid input data type"),
+                    Value::Float(_) => {
+                        return internal("Operand.SetRawData IdxX: invalid input data type");
+                    }
                 };
                 let required = index as u64 + source.len() as u64;
                 if required > self.array_max_size() as u64 {

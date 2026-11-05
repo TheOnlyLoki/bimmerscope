@@ -13,7 +13,12 @@ use crate::{ErrorCode, VmError, VmResult, internal};
 pub struct State {}
 
 /// C#: `OpA2Fix` (a2fix)
-pub(crate) fn op_a2fix(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_a2fix(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpA2fix: Invalid type");
     }
@@ -34,7 +39,12 @@ pub(crate) fn op_a2fix(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpFix2Hex` (fix2hex)
-pub(crate) fn op_fix2hex(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fix2hex(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFix2hex: Invalid type");
     }
@@ -50,7 +60,12 @@ pub(crate) fn op_fix2hex(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mu
 }
 
 /// C#: `OpFix2Dez` (fix2dez)
-pub(crate) fn op_fix2dez(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_fix2dez(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpFix2dez: Invalid type");
     }
@@ -66,7 +81,12 @@ pub(crate) fn op_fix2dez(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mu
 }
 
 /// C#: `OpA2Y` (a2y)
-pub(crate) fn op_a2y(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_a2y(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpA2y: Invalid type");
     }
@@ -107,7 +127,12 @@ pub(crate) fn op_a2y(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Op
 }
 
 /// C#: `OpHex2Y` (hex2y)
-pub(crate) fn op_hex2y(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_hex2y(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpHex2y: Invalid type");
     }
@@ -121,7 +146,12 @@ pub(crate) fn op_hex2y(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpY2Bcd` (y2bcd)
-pub(crate) fn op_y2bcd(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_y2bcd(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpY2bcd: Invalid type");
     }
@@ -134,7 +164,12 @@ pub(crate) fn op_y2bcd(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpY2Hex` (y2hex)
-pub(crate) fn op_y2hex(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_y2hex(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpY2hex: Invalid type");
     }
@@ -147,7 +182,12 @@ pub(crate) fn op_y2hex(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut 
 }
 
 /// C#: `OpUfix2Dez` (ufix2dez)
-pub(crate) fn op_ufix2dez(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ufix2dez(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if arg0.reg().is_none() {
         return internal("OpUfix2dez: Invalid type");
     }
@@ -189,13 +229,17 @@ fn string_to_value(number: &str) -> i64 {
                 if body.len() >= 2 && body[..2].eq_ignore_ascii_case("0x") {
                     body = &body[2..];
                 }
-                return parse_unsigned_radix(body, 16).map(|v| v as i64).unwrap_or(0);
+                return parse_unsigned_radix(body, 16)
+                    .map(|v| v as i64)
+                    .unwrap_or(0);
             }
         }
         return 0;
     }
     if lower.starts_with("0y") {
-        return parse_unsigned_radix(&local[2..], 2).map(|v| v as i64).unwrap_or(0);
+        return parse_unsigned_radix(&local[2..], 2)
+            .map(|v| v as i64)
+            .unwrap_or(0);
     }
     if lower != "-" && lower != "--" && lower.chars().next().is_some_and(|c| !c.is_alphabetic()) {
         let conv = local.trim_start();
@@ -295,7 +339,12 @@ mod tests {
     use crate::regs::Reg;
 
     fn oc() -> OpCode {
-        OpCode { code: 0, name: "test", func: None, arg0_is_near_address: false }
+        OpCode {
+            code: 0,
+            name: "test",
+            func: None,
+            arg0_is_near_address: false,
+        }
     }
 
     fn out_str(vm: &mut Vm, a0: &Operand) -> String {
@@ -372,7 +421,10 @@ mod tests {
         let mut a0 = Operand::r(Reg::S(0));
         let mut a1 = Operand::imm_str(b"01 0a;ff,,  ");
         op_a2y(&mut vm, &oc(), &mut a0, &mut a1).unwrap();
-        assert_eq!(vm.op_array(&a0).unwrap(), vec![0x01, 0x0A, 0xFF, 0, 0, 0, 0]);
+        assert_eq!(
+            vm.op_array(&a0).unwrap(),
+            vec![0x01, 0x0A, 0xFF, 0, 0, 0, 0]
+        );
 
         // Invalid char cuts the string; "zz" and after are ignored.
         let mut a1 = Operand::imm_str(b"12 zz 34");

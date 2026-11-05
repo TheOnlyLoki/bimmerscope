@@ -212,64 +212,132 @@ fn error_code_from_value(value: u32) -> Option<ErrorCode> {
 }
 
 /// C#: `OpErgb` (ergb)
-pub(crate) fn op_ergb(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ergb(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let name = vm.op_string(arg0)?;
     let value = vm.op_value(arg1, 1)? as u8 as i64;
-    vm.set_result_data(ResultData::new(ResultType::B, name, ResultValue::Int(value)));
+    vm.set_result_data(ResultData::new(
+        ResultType::B,
+        name,
+        ResultValue::Int(value),
+    ));
     Ok(())
 }
 
 /// C#: `OpErgw` (ergw)
-pub(crate) fn op_ergw(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ergw(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let name = vm.op_string(arg0)?;
     let value = vm.op_value(arg1, 2)? as u16 as i64;
-    vm.set_result_data(ResultData::new(ResultType::W, name, ResultValue::Int(value)));
+    vm.set_result_data(ResultData::new(
+        ResultType::W,
+        name,
+        ResultValue::Int(value),
+    ));
     Ok(())
 }
 
 /// C#: `OpErgd` (ergd)
-pub(crate) fn op_ergd(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ergd(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let name = vm.op_string(arg0)?;
-    let value = vm.op_value(arg1, 4)? as u32 as i64;
-    vm.set_result_data(ResultData::new(ResultType::D, name, ResultValue::Int(value)));
+    let value = vm.op_value(arg1, 4)? as i64;
+    vm.set_result_data(ResultData::new(
+        ResultType::D,
+        name,
+        ResultValue::Int(value),
+    ));
     Ok(())
 }
 
 /// C#: `OpErgi` (ergi). Sign extended from 16 bit, as C# `(Int64)(Int16)`.
-pub(crate) fn op_ergi(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ergi(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let name = vm.op_string(arg0)?;
     let value = vm.op_value(arg1, 2)? as u16 as i16 as i64;
-    vm.set_result_data(ResultData::new(ResultType::I, name, ResultValue::Int(value)));
+    vm.set_result_data(ResultData::new(
+        ResultType::I,
+        name,
+        ResultValue::Int(value),
+    ));
     Ok(())
 }
 
 /// C#: `OpErgr` (ergr)
-pub(crate) fn op_ergr(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ergr(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let name = vm.op_string(arg0)?;
     let value = vm.op_float(arg1)?;
-    vm.set_result_data(ResultData::new(ResultType::R, name, ResultValue::Float(value)));
+    vm.set_result_data(ResultData::new(
+        ResultType::R,
+        name,
+        ResultValue::Float(value),
+    ));
     Ok(())
 }
 
 /// C#: `OpErgs` (ergs)
-pub(crate) fn op_ergs(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ergs(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let name = vm.op_string(arg0)?;
     let value = vm.op_string(arg1)?;
-    vm.set_result_data(ResultData::new(ResultType::S, name, ResultValue::Str(value)));
+    vm.set_result_data(ResultData::new(
+        ResultType::S,
+        name,
+        ResultValue::Str(value),
+    ));
     Ok(())
 }
 
 /// C#: `OpErgy` (ergy)
-pub(crate) fn op_ergy(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ergy(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let name = vm.op_string(arg0)?;
     let value = vm.op_array(arg1)?;
-    vm.set_result_data(ResultData::new(ResultType::Y, name, ResultValue::Bytes(value)));
+    vm.set_result_data(ResultData::new(
+        ResultType::Y,
+        name,
+        ResultValue::Bytes(value),
+    ));
     Ok(())
 }
 
 /// C#: `OpEnewset` (enewset). Moves the current result set into the list of
 /// finished sets. C# does nothing when the set is empty.
-pub(crate) fn op_enewset(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_enewset(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if !vm.results.is_empty() {
         let set = std::mem::take(&mut vm.results);
         vm.result_sets.push(set);
@@ -280,7 +348,12 @@ pub(crate) fn op_enewset(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mu
 /// C#: `OpEtag` (etag). Jumps to arg0 if the result named by arg1 is not
 /// requested. C# checks the request dict only when it is non-empty, and
 /// reads arg0/arg1 only at that point; the same order is kept here.
-pub(crate) fn op_etag(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_etag(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if !vm.requested_results.is_empty() {
         let name = vm.op_string(arg1)?;
         if !vm.is_result_requested(&name) {
@@ -293,7 +366,12 @@ pub(crate) fn op_etag(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 /// C#: `OpEerr` (eerr). Raises the error that belongs to the trapped bit.
 /// C# loops over `_trapBitDict` and `RaiseError` throws at the first match,
 /// so the first matching key wins. No match raises EDIABAS_BIP_0000.
-pub(crate) fn op_eerr(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_eerr(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     if vm.error_trap_bit_nr >= 0 {
         for key in TRAP_KEYS {
             if key.trap_bit() as i32 == vm.error_trap_bit_nr {
@@ -306,25 +384,48 @@ pub(crate) fn op_eerr(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut O
 }
 
 /// C#: `OpErgc` (ergc). Sign extended from 8 bit, as C# `(Int64)(SByte)`.
-pub(crate) fn op_ergc(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ergc(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let name = vm.op_string(arg0)?;
     let value = vm.op_value(arg1, 1)? as u8 as i8 as i64;
-    vm.set_result_data(ResultData::new(ResultType::C, name, ResultValue::Int(value)));
+    vm.set_result_data(ResultData::new(
+        ResultType::C,
+        name,
+        ResultValue::Int(value),
+    ));
     Ok(())
 }
 
 /// C#: `OpErgl` (ergl). Sign extended from 32 bit, as C# `(Int64)(Int32)`.
-pub(crate) fn op_ergl(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ergl(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let name = vm.op_string(arg0)?;
-    let value = vm.op_value(arg1, 4)? as u32 as i32 as i64;
-    vm.set_result_data(ResultData::new(ResultType::L, name, ResultValue::Int(value)));
+    let value = vm.op_value(arg1, 4)? as i32 as i64;
+    vm.set_result_data(ResultData::new(
+        ResultType::L,
+        name,
+        ResultValue::Int(value),
+    ));
     Ok(())
 }
 
 /// C#: `OpErgsysi` (ergsysi). `!INITIALISIERUNG` sets `request_init` when the
 /// value is non-zero and is not stored as a result. Other names go to the
 /// system result set, zero extended (C# `(Int64)EdValueType`).
-pub(crate) fn op_ergsysi(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_ergsysi(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let data = vm.op_string(arg0)?;
     let data_value = vm.op_value(arg1, 2)?;
     if data == "!INITIALISIERUNG" {
@@ -332,14 +433,23 @@ pub(crate) fn op_ergsysi(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mu
             vm.request_init = true;
         }
     } else {
-        vm.set_sys_result_data(ResultData::new(ResultType::I, data, ResultValue::Int(data_value as i64)));
+        vm.set_sys_result_data(ResultData::new(
+            ResultType::I,
+            data,
+            ResultValue::Int(data_value as i64),
+        ));
     }
     Ok(())
 }
 
 /// C#: `OpGenerr` (generr). Raises the error code in arg0. Values outside
 /// EDIABAS_RUN_0000..=EDIABAS_ERROR_LAST raise EDIABAS_BIP_0001.
-pub(crate) fn op_generr(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+pub(crate) fn op_generr(
+    vm: &mut Vm,
+    oc: &OpCode,
+    arg0: &mut Operand,
+    arg1: &mut Operand,
+) -> VmResult<()> {
     let value = vm.op_value(arg0, 0)?;
     match error_code_from_value(value) {
         Some(code) => Err(vm.raise_error(code)),
@@ -497,7 +607,10 @@ mod tests {
         op_enewset(&mut vm, oc(), &mut a0, &mut a1).unwrap();
         assert!(vm.results.is_empty());
         assert_eq!(vm.result_sets.len(), 1);
-        assert_eq!(vm.result_sets[0].get("A").unwrap().value, ResultValue::Int(1));
+        assert_eq!(
+            vm.result_sets[0].get("A").unwrap().value,
+            ResultValue::Int(1)
+        );
     }
 
     #[test]
@@ -545,7 +658,10 @@ mod tests {
         let mut vm = Vm::for_test();
         vm.error_trap_bit_nr = 6;
         let (mut a0, mut a1) = (Operand::none(), Operand::none());
-        assert_eq!(raised(op_eerr(&mut vm, oc(), &mut a0, &mut a1)), Some(ErrorCode::EDIABAS_BIP_0006));
+        assert_eq!(
+            raised(op_eerr(&mut vm, oc(), &mut a0, &mut a1)),
+            Some(ErrorCode::EDIABAS_BIP_0006)
+        );
     }
 
     #[test]
@@ -553,30 +669,51 @@ mod tests {
         let mut vm = Vm::for_test();
         vm.error_trap_bit_nr = 0;
         let (mut a0, mut a1) = (Operand::none(), Operand::none());
-        assert_eq!(raised(op_eerr(&mut vm, oc(), &mut a0, &mut a1)), Some(ErrorCode::EDIABAS_BIP_0000));
+        assert_eq!(
+            raised(op_eerr(&mut vm, oc(), &mut a0, &mut a1)),
+            Some(ErrorCode::EDIABAS_BIP_0000)
+        );
     }
 
     #[test]
     fn generr_raises_code_in_range() {
         let mut vm = Vm::for_test();
-        let (mut a0, mut a1) = (Operand::imm32(ErrorCode::EDIABAS_RUN_0005 as u32), Operand::none());
-        assert_eq!(raised(op_generr(&mut vm, oc(), &mut a0, &mut a1)), Some(ErrorCode::EDIABAS_RUN_0005));
+        let (mut a0, mut a1) = (
+            Operand::imm32(ErrorCode::EDIABAS_RUN_0005 as u32),
+            Operand::none(),
+        );
+        assert_eq!(
+            raised(op_generr(&mut vm, oc(), &mut a0, &mut a1)),
+            Some(ErrorCode::EDIABAS_RUN_0005)
+        );
         assert_eq!(vm.error_code_last, ErrorCode::EDIABAS_RUN_0005);
     }
 
     #[test]
     fn generr_upper_bound_is_last_code() {
         let mut vm = Vm::for_test();
-        let (mut a0, mut a1) = (Operand::imm32(ErrorCode::EDIABAS_ERROR_LAST as u32), Operand::none());
-        assert_eq!(raised(op_generr(&mut vm, oc(), &mut a0, &mut a1)), Some(ErrorCode::EDIABAS_ERROR_LAST));
+        let (mut a0, mut a1) = (
+            Operand::imm32(ErrorCode::EDIABAS_ERROR_LAST as u32),
+            Operand::none(),
+        );
+        assert_eq!(
+            raised(op_generr(&mut vm, oc(), &mut a0, &mut a1)),
+            Some(ErrorCode::EDIABAS_ERROR_LAST)
+        );
     }
 
     #[test]
     fn generr_out_of_range_raises_bip_0001() {
         let mut vm = Vm::for_test();
         let (mut a0, mut a1) = (Operand::imm32(0), Operand::none());
-        assert_eq!(raised(op_generr(&mut vm, oc(), &mut a0, &mut a1)), Some(ErrorCode::EDIABAS_BIP_0001));
+        assert_eq!(
+            raised(op_generr(&mut vm, oc(), &mut a0, &mut a1)),
+            Some(ErrorCode::EDIABAS_BIP_0001)
+        );
         let (mut a0, mut a1) = (Operand::imm32(400), Operand::none());
-        assert_eq!(raised(op_generr(&mut vm, oc(), &mut a0, &mut a1)), Some(ErrorCode::EDIABAS_BIP_0001));
+        assert_eq!(
+            raised(op_generr(&mut vm, oc(), &mut a0, &mut a1)),
+            Some(ErrorCode::EDIABAS_BIP_0001)
+        );
     }
 }

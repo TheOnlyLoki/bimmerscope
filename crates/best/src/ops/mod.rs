@@ -26,8 +26,18 @@ pub struct OpCode {
     pub arg0_is_near_address: bool,
 }
 
-const fn oc(code: u8, name: &'static str, func: Option<OpFn>, arg0_is_near_address: bool) -> OpCode {
-    OpCode { code, name, func, arg0_is_near_address }
+const fn oc(
+    code: u8,
+    name: &'static str,
+    func: Option<OpFn>,
+    arg0_is_near_address: bool,
+) -> OpCode {
+    OpCode {
+        code,
+        name,
+        func,
+        arg0_is_near_address,
+    }
 }
 
 pub static OPCODES: [OpCode; 184] = [

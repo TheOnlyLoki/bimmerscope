@@ -124,7 +124,9 @@ impl Sgbd {
     }
 
     pub fn table(&self, name: &str) -> Option<&Table> {
-        self.tables.iter().find(|t| t.name.eq_ignore_ascii_case(name))
+        self.tables
+            .iter()
+            .find(|t| t.name.eq_ignore_ascii_case(name))
     }
 }
 
@@ -139,7 +141,10 @@ pub fn read_summary(path: impl AsRef<Path>) -> Result<(Kind, Description)> {
 
 fn decode(bytes: &[u8]) -> String {
     let end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
-    encoding_rs::WINDOWS_1252.decode_without_bom_handling(&bytes[..end]).0.into_owned()
+    encoding_rs::WINDOWS_1252
+        .decode_without_bom_handling(&bytes[..end])
+        .0
+        .into_owned()
 }
 
 struct Reader<'a>(&'a [u8]);
@@ -228,7 +233,9 @@ impl Reader<'_> {
         };
         // Unlike the job and uses counts, the table count is obfuscated.
         let count = self.dec_u32(off)? as usize;
-        (0..count).map(|i| self.table(off + 4 + i * TABLE_RECORD)).collect()
+        (0..count)
+            .map(|i| self.table(off + 4 + i * TABLE_RECORD))
+            .collect()
     }
 
     fn table(&self, off: usize) -> Result<Table> {

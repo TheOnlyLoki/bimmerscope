@@ -35,7 +35,10 @@ impl Description {
             let value = value.to_string();
             let key = key.to_ascii_uppercase();
             if key == "JOBNAME" {
-                d.jobs.push(JobDoc { name: value, ..Default::default() });
+                d.jobs.push(JobDoc {
+                    name: value,
+                    ..Default::default()
+                });
                 continue;
             }
             let Some(job) = d.jobs.last_mut() else {
@@ -44,10 +47,20 @@ impl Description {
             };
             match key.as_str() {
                 "JOBCOMMENT" => job.comments.push(value),
-                "ARG" => job.args.push(Param { name: value, ..Default::default() }),
-                "RESULT" => job.results.push(Param { name: value, ..Default::default() }),
+                "ARG" => job.args.push(Param {
+                    name: value,
+                    ..Default::default()
+                }),
+                "RESULT" => job.results.push(Param {
+                    name: value,
+                    ..Default::default()
+                }),
                 "ARGTYPE" | "ARGCOMMENT" | "RESULTTYPE" | "RESULTCOMMENT" => {
-                    let list = if key.starts_with("ARG") { &mut job.args } else { &mut job.results };
+                    let list = if key.starts_with("ARG") {
+                        &mut job.args
+                    } else {
+                        &mut job.results
+                    };
                     if let Some(p) = list.last_mut() {
                         if key.ends_with("TYPE") {
                             p.ty = value;

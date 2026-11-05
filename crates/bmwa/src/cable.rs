@@ -40,7 +40,11 @@ fn port(sys: &Path) -> Option<Port> {
     let real = fs::canonicalize(sys).ok()?;
     // .../<usb-device>/<interface>/ttyUSBn
     let usb = real.parent()?.parent()?;
-    let read = |p: &Path| fs::read_to_string(p).map(|s| s.trim().to_string()).unwrap_or_default();
+    let read = |p: &Path| {
+        fs::read_to_string(p)
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default()
+    };
     let driver = fs::read_link(sys.join("driver"))
         .ok()
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
@@ -54,7 +58,11 @@ fn port(sys: &Path) -> Option<Port> {
         .is_ok();
     Some(Port {
         latency_ms: read(&sys.join("latency_timer")).parse().ok(),
-        vid_pid: format!("{}:{}", read(&usb.join("idVendor")), read(&usb.join("idProduct"))),
+        vid_pid: format!(
+            "{}:{}",
+            read(&usb.join("idVendor")),
+            read(&usb.join("idProduct"))
+        ),
         product: read(&usb.join("product")),
         serial: read(&usb.join("serial")),
         driver,
