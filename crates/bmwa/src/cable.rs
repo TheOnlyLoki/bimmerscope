@@ -5,9 +5,16 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const SYSFS_USB_SERIAL: &str = "/sys/bus/usb-serial/devices";
+
 /// Can we open the tty? Probes with `O_NONBLOCK` so it does not wait for carrier.
-#[cfg(unix)]
+/// Only a permission error counts: a port that our own diagnosis holds open
+/// (exclusive, `EBUSY`) is still accessible.
 fn can_open(dev: &Path) -> bool {
+    !matches!(open_probe(dev), Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied)
+}
+
+#[cfg(unix)]
+fn open_probe(dev: &Path) -> std::io::Result<fs::File> {
     use std::os::unix::fs::OpenOptionsExt;
     /// `O_NONBLOCK` on Linux.
     const O_NONBLOCK: i32 = 0o4000;
@@ -16,16 +23,11 @@ fn can_open(dev: &Path) -> bool {
         .write(true)
         .custom_flags(O_NONBLOCK)
         .open(dev)
-        .is_ok()
 }
 
 #[cfg(not(unix))]
-fn can_open(dev: &Path) -> bool {
-    fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(dev)
-        .is_ok()
+fn open_probe(dev: &Path) -> std::io::Result<fs::File> {
+    fs::OpenOptions::new().read(true).write(true).open(dev)
 }
 
 #[derive(Debug, Clone)]
