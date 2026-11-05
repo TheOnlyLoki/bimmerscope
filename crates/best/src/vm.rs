@@ -27,7 +27,12 @@ pub struct Args {
 }
 
 pub struct Vm {
+    /// C#: `_sgbdFs`: the loaded SGBD (tables, jobs).
     pub sgbd: Arc<Sgbd>,
+    /// C#: the `fs` passed to `ExecuteJobPrivate`: the file the running
+    /// job's bytecode is read from. Same as `sgbd`, except for jobs
+    /// inherited via `uses`, where it is the base file (C#: `_sgbdBaseFs`).
+    pub code: Arc<Sgbd>,
     pub regs: Regs,
     pub flags: Flags,
     pub stack: Vec<u8>,
@@ -82,6 +87,7 @@ pub struct Vm {
 impl Vm {
     pub fn new(sgbd: Arc<Sgbd>) -> Self {
         let mut vm = Self {
+            code: sgbd.clone(),
             sgbd,
             regs: Regs::default(),
             flags: Flags::default(),
@@ -117,6 +123,12 @@ impl Vm {
         };
         vm.set_array_max_buf_size(vm.sgbd.array_size.max(1));
         vm
+    }
+
+    /// Loads a new SGBD. Bytecode is read from it too, until `code` is changed.
+    pub fn set_sgbd(&mut self, sgbd: Arc<Sgbd>) {
+        self.code = sgbd.clone();
+        self.sgbd = sgbd;
     }
 
     /// A VM over an empty SGBD, for opcode unit tests.
@@ -198,7 +210,7 @@ impl Vm {
     }
 
     fn code(&self, off: u32, len: usize) -> VmResult<Vec<u8>> {
-        let data = self.sgbd.data();
+        let data = self.code.data();
         let off = off as usize;
         match data.get(off..off + len) {
             Some(b) => Ok(b.iter().map(|x| x ^ XOR_KEY).collect()),
@@ -260,7 +272,15 @@ impl Vm {
         self.error_trap_mask = 0;
         self.error_code_last = ErrorCode::EDIABAS_ERR_NONE;
         self.result_job_status.clear();
-        self.set_array_max_buf_size(self.sgbd.array_size.max(1));
+        // C#: `ArrayMaxBufSize = jobInfo.ArraySize`, the array size of the
+        // file that holds the job.
+        self.set_array_max_buf_size(self.code.array_size.max(1));
+        // C#: `CloseTableFs()`.
+        self.st_table = Default::default();
+        // C#: _infoProgressRange/_infoProgressPos = -1, _infoProgressText = "".
+        self.st_misc.info_progress_range = -1;
+        self.st_misc.info_progress_pos = -1;
+        self.st_misc.info_progress_text.clear();
         self.pc = address;
         self.job_end = false;
 
@@ -292,10 +312,12 @@ impl Vm {
         Ok(())
     }
 
-    /// Runs a job by name from this SGBD (no init job, no system results yet).
+    /// Runs a job by name from this SGBD (no init job, no system results,
+    /// no `uses` jobs). See `crate::Ediabas` for the full job layer.
     pub fn execute_job(&mut self, name: &str) -> VmResult<()> {
         let job = self.sgbd.jobs.iter().find(|j| j.name.eq_ignore_ascii_case(name));
         let address = job.ok_or_else(|| VmError::JobNotFound(name.to_string()))?.address;
+        self.code = self.sgbd.clone();
         self.run(address)
     }
 }

@@ -5,6 +5,7 @@
 
 pub mod error_code;
 pub mod flags;
+pub mod job;
 pub mod iface;
 pub mod operand;
 pub mod ops;
@@ -14,6 +15,7 @@ pub mod vm;
 
 pub use error_code::ErrorCode;
 pub use iface::Interface;
+pub use job::Ediabas;
 pub use result::{ResultData, ResultSet, ResultType, ResultValue};
 pub use vm::Vm;
 
@@ -32,6 +34,10 @@ pub enum VmError {
     NotImplemented(&'static str),
     #[error("job not found: {0}")]
     JobNotFound(String),
+    /// SGBD file missing or unreadable, or group variant not found
+    /// (C#: `ArgumentOutOfRangeException` in `ResolveSgbdFile`/`OpenSgbdFs`).
+    #[error("file: {0}")]
+    File(String),
     #[error("sgbd: {0}")]
     Sgbd(#[from] sgbd::Error),
 }
