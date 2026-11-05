@@ -164,6 +164,7 @@ dependencies = [
  "anyhow",
  "best",
  "clap",
+ "obd",
  "ratatui",
  "sgbd",
 ]

@@ -24,6 +24,9 @@ struct Args {
     /// Answer diagnostic requests from an EdiabasLib .sim file instead of a car.
     #[arg(long, env = "BMWA_SIM_FILE")]
     sim: Option<PathBuf>,
+    /// Serial port of the K+DCAN cable. Default: first FTDI cable found.
+    #[arg(long, env = "BMWA_PORT")]
+    port: Option<String>,
 }
 
 /// Diagnostic interface for the worker thread. Built there, since interfaces are not `Send`.
@@ -31,8 +34,10 @@ fn make_interface(args: &Args) -> Option<Box<dyn best::Interface>> {
     if let Some(path) = &args.sim {
         return SimInterface::open(path).ok().map(|s| Box::new(s) as Box<dyn best::Interface>);
     }
-    // TODO(obd): ObdInterface::new(port)
-    None
+    let port = args.port.clone().or_else(|| {
+        cable::scan().into_iter().find(|p| p.is_ftdi()).map(|p| p.dev.display().to_string())
+    })?;
+    Some(Box::new(obd::ObdInterface::new(&port)))
 }
 
 fn main() -> anyhow::Result<()> {
@@ -44,7 +49,7 @@ fn main() -> anyhow::Result<()> {
     let rx = index::spawn(files.iter().map(|f| f.path.clone()).collect());
     let worker = diag::spawn(args.ecu_dir.clone(), args.clone());
     let mut app = app::App::new(args.ecu_dir, files, rx, worker);
-    if args.sim.is_some() {
+    if args.sim.is_some() || args.port.is_some() {
         app.tab = app::Tab::Faults;
     }
 

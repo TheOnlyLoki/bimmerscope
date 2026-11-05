@@ -394,7 +394,7 @@ mod tests {
             eprintln!("skipped: set BMWA_ECU_DIR and BMWA_SIM_FILE");
             return;
         };
-        let args = Args { ecu_dir: PathBuf::from(&dir), sim: Some(PathBuf::from(sim)) };
+        let args = Args { ecu_dir: PathBuf::from(&dir), sim: Some(PathBuf::from(sim)), port: None };
         let handle = spawn(PathBuf::from(&dir), args);
         handle.tx.send(Command::Scan).unwrap();
 

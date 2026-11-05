@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.104"
 best = { version = "0.1.0", path = "../best" }
+obd = { path = "../obd" }
 clap = { version = "4.6.7", features = ["derive", "env"] }
 ratatui = "0.30.2"
 sgbd = { version = "0.1.0", path = "../sgbd" }
