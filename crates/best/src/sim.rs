@@ -23,6 +23,7 @@ use std::path::Path;
 
 use crate::iface::{IfResult, Interface};
 use crate::ErrorCode;
+use crate::telegram::{TRANS_BUFFER_SIZE, calc_checksum_bmw_fast, tel_length_bmw_fast};
 
 pub const DEFAULT_BATTERY_VOLT: i32 = 12000;
 pub const DEFAULT_IGNITION_VOLT: i32 = 12000;
@@ -607,36 +608,9 @@ fn convert_data(
 }
 
 // ---------------------------------------------------------------------------
-// BMW-FAST helpers (C#: EdInterfaceBase static methods)
-// ---------------------------------------------------------------------------
-
-/// C#: `TelLengthBmwFast`. Telegram length without checksum; `None` where
-/// C# would index out of range.
-fn tel_length_bmw_fast(data: &[u8]) -> Option<usize> {
-    let mut tel_length = (*data.first()? & 0x3F) as usize;
-    if tel_length == 0 {
-        if *data.get(3)? == 0 {
-            tel_length = ((*data.get(4)? as usize) << 8) + *data.get(5)? as usize + 6;
-        } else {
-            tel_length = data[3] as usize + 4;
-        }
-    } else {
-        tel_length += 3;
-    }
-    Some(tel_length.min(data.len()))
-}
-
-/// C#: `CalcChecksumBmwFast`.
-fn calc_checksum_bmw_fast(data: &[u8], length: usize) -> u8 {
-    data[..length].iter().fold(0u8, |s, b| s.wrapping_add(*b))
-}
-
-// ---------------------------------------------------------------------------
 // SimInterface (C#: EdInterfaceObd in simulation mode)
 // ---------------------------------------------------------------------------
 
-/// C#: `TransBufferSize`.
-const TRANS_BUFFER_SIZE: usize = 0x800;
 
 /// C#: `ParTransmitFunc`. Only BMW-FAST changes the simulation behaviour.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

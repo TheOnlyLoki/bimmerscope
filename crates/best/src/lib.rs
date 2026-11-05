@@ -12,6 +12,7 @@ pub mod ops;
 pub mod regs;
 pub mod result;
 pub mod sim;
+pub mod telegram;
 pub mod vm;
 
 pub use error_code::ErrorCode;

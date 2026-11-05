@@ -1,0 +1,9 @@
+[package]
+name = "obd"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+best = { version = "0.1.0", path = "../best" }
+serialport = { version = "4", default-features = false }
