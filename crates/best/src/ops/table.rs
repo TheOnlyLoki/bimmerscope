@@ -7,6 +7,8 @@
 //! `t.rows.len()`. The header is `t.columns`. C# `GetTableRows` + 1 (the
 //! "including header" count of `tabrows`) therefore becomes `t.rows.len() + 1`.
 
+use std::sync::Arc;
+
 use super::OpCode;
 use crate::operand::{Operand, Value};
 use crate::vm::Vm;
@@ -19,22 +21,64 @@ pub struct State {
     pub table_index: i32,
     /// C#: `_tableRowIndex`. 0-based data row (header excluded), -1 = no row selected.
     pub table_row_index: i32,
+    /// C#: `_tableFs` / `_tableInfosExt`: tables from another SGBD (uses file
+    /// or `tabsetex` base file). `None` = tables of `vm.sgbd`.
+    pub ext: Option<Arc<sgbd::Sgbd>>,
 }
 
 impl Default for State {
     fn default() -> Self {
-        Self { table_index: -1, table_row_index: -1 }
+        Self { table_index: -1, table_row_index: -1, ext: None }
     }
+}
+
+/// C#: `CloseTableFs`.
+fn close_table_fs(vm: &mut Vm) {
+    vm.st_table = State::default();
+}
+
+/// Tables of the active table file (C#: `GetTableInfos(GetTableFs())`).
+fn tables(vm: &Vm) -> &[sgbd::Table] {
+    vm.st_table.ext.as_ref().map_or(&vm.sgbd.tables, |s| &s.tables)
+}
+
+/// `<EcuPath>/<base>.prg`, else `.grp`, matched case-insensitively.
+fn find_base_file(vm: &Vm, base: &str) -> Option<std::path::PathBuf> {
+    let dir = vm.config_property("EcuPath")?;
+    let entries: Vec<_> = std::fs::read_dir(dir).ok()?.flatten().map(|e| e.path()).collect();
+    ["prg", "grp"].iter().find_map(|ext| {
+        let want = format!("{base}.{ext}");
+        entries.iter().find(|p| p.file_name().is_some_and(|n| n.to_string_lossy().eq_ignore_ascii_case(&want))).cloned()
+    })
+}
+
+/// Shared tail of tabset / tabsetex: assign the looked-up table, keep the row
+/// only if the table index did not change.
+fn assign_table(vm: &mut Vm, idx: i32, found: bool, last_idx: i32, last_row: i32) -> VmResult<()> {
+    if !found {
+        vm.set_error(ErrorCode::EDIABAS_BIP_0010)?;
+    }
+    vm.st_table.table_index = idx;
+    vm.st_table.table_row_index = if idx == last_idx { last_row } else { -1 };
+    Ok(())
 }
 
 /// C#: `OpTabset` (tabset)
 pub(crate) fn op_tabset(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, _arg1: &mut Operand) -> VmResult<()> {
+    let (last_idx, last_row) = (vm.st_table.table_index, vm.st_table.table_row_index);
+    close_table_fs(vm);
+    // C#: `_sgbdBaseFs` is the uses file while an inherited job runs. Its
+    // tables are searched first, then the main SGBD.
+    let base = (!Arc::ptr_eq(&vm.code, &vm.sgbd)).then(|| vm.code.clone());
+    let has_base = base.is_some();
+    vm.st_table.ext = base;
     let name = vm.op_string(arg0)?;
-    // C# `CloseTableFs()` runs first and resets the selection, even if the
-    // lookup then raises an error.
-    // TODO(base sgbd): C# falls back to `_sgbdBaseFs` when the table is not
-    // in the current SGBD. Rust has only `vm.sgbd`, so no fallback here.
-    tab_select(vm, &name, true)
+    let (mut idx, mut found) = find_table(vm, &name);
+    if !found && has_base {
+        close_table_fs(vm);
+        (idx, found) = find_table(vm, &name);
+    }
+    assign_table(vm, idx, found, last_idx, last_row)
 }
 
 /// C#: `OpTabseek` (tabseek)
@@ -124,17 +168,21 @@ pub(crate) fn op_tabseeku(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &
 
 /// C#: `OpTabsetex` (tabsetex)
 pub(crate) fn op_tabsetex(vm: &mut Vm, _oc: &OpCode, arg0: &mut Operand, arg1: &mut Operand) -> VmResult<()> {
+    let (last_idx, last_row) = (vm.st_table.table_index, vm.st_table.table_row_index);
     let base = vm.op_string(arg1)?;
-    let name = vm.op_string(arg0)?;
-    if base.is_empty() {
-        // C# skips the file switch entirely and does not reset the selection.
-        return tab_select(vm, &name, false);
+    if !base.is_empty() {
+        let Some(path) = find_base_file(vm, &base) else {
+            return vm.set_error(ErrorCode::EDIABAS_SYS_0002);
+        };
+        close_table_fs(vm);
+        match sgbd::Sgbd::open(&path) {
+            Ok(s) => vm.st_table.ext = Some(Arc::new(s)),
+            Err(_) => return vm.set_error(ErrorCode::EDIABAS_SYS_0002),
+        }
     }
-    // TODO(base sgbd): C# opens `<EcuPath>/<base>.prg|.grp` and resolves the
-    // table in that file (EDIABAS_SYS_0002 if the file is missing). Rust has
-    // only `vm.sgbd`, so the base file name is ignored and the table is looked
-    // up there. The selection is reset first, as C# does before the file switch.
-    tab_select(vm, &name, true)
+    let name = vm.op_string(arg0)?;
+    let (idx, found) = find_table(vm, &name);
+    assign_table(vm, idx, found, last_idx, last_row)
 }
 
 /// C#: `OpTabcols` (tabcols)
@@ -201,7 +249,7 @@ fn c_upper(s: &str) -> String {
 
 /// The table at `idx`, if valid (C#: `tableIdx < 0 || tableIdx >= Length` gives null).
 fn table(vm: &Vm, idx: i32) -> Option<&sgbd::Table> {
-    usize::try_from(idx).ok().and_then(|i| vm.sgbd.tables.get(i))
+    usize::try_from(idx).ok().and_then(|i| tables(vm).get(i))
 }
 
 /// Cell of a data row; a short row reads as "" (C# rows are always full width).
@@ -220,9 +268,10 @@ fn column_index(t: &sgbd::Table, name: &str) -> Option<usize> {
 /// index (`Length - 1`), as C# does, with `found = false`.
 fn find_table(vm: &Vm, name: &str) -> (i32, bool) {
     let want = c_upper(name);
-    match vm.sgbd.tables.iter().position(|t| c_upper(&t.name) == want) {
+    let tables = tables(vm);
+    match tables.iter().position(|t| c_upper(&t.name) == want) {
         Some(i) => (i as i32, true),
-        None => (vm.sgbd.tables.len() as i32 - 1, false),
+        None => (tables.len() as i32 - 1, false),
     }
 }
 
@@ -273,27 +322,6 @@ fn seek_value(vm: &Vm, idx: i32, column: &str, value: u32) -> (i32, bool) {
     let Some(t) = table(vm, idx) else { return (-1, false) };
     let Some(col) = column_index(t, column) else { return (-1, false) };
     seek_rows(t, col, &value, |s| string_to_value(s).0 as u32)
-}
-
-/// Common tail of tabset / tabsetex (C# `OpTabset` / `OpTabsetex`).
-/// `close_first` mirrors C# `CloseTableFs()`, which resets the selection before
-/// the lookup. If the table is not found, the error is raised (state is not
-/// updated when untrapped), otherwise the last table index is still assigned.
-/// The row index is kept only when the table index does not change.
-fn tab_select(vm: &mut Vm, name: &str, close_first: bool) -> VmResult<()> {
-    let last_idx = vm.st_table.table_index;
-    let last_row = vm.st_table.table_row_index;
-    if close_first {
-        vm.st_table.table_index = -1;
-        vm.st_table.table_row_index = -1;
-    }
-    let (idx, found) = find_table(vm, name);
-    if !found {
-        vm.set_error(ErrorCode::EDIABAS_BIP_0010)?;
-    }
-    vm.st_table.table_index = idx;
-    vm.st_table.table_row_index = if idx == last_idx { last_row } else { -1 };
-    Ok(())
 }
 
 #[cfg(test)]
@@ -571,16 +599,12 @@ mod tests {
     }
 
     #[test]
-    fn tabsetex_with_base_name_looks_up_in_current_sgbd() {
+    fn tabsetex_with_missing_base_file_raises_sys_0002() {
         let mut vm = vm();
+        vm.config.insert("EcuPath".into(), std::env::temp_dir().to_string_lossy().into_owned());
         set_s(&mut vm, Reg::S(0), "U");
-        set_s(&mut vm, Reg::S(1), "BASE");
-        // TODO(base sgbd) in the port: the base file is ignored, so U is found in vm.sgbd.
-        run(op_tabsetex, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::r(Reg::S(1))).unwrap();
-        assert_eq!(vm.st_table.table_index, 1);
-        set_s(&mut vm, Reg::S(0), "NOPE");
+        set_s(&mut vm, Reg::S(1), "no_such_bmwa_base_file");
         let r = run(op_tabsetex, &mut vm, &mut Operand::r(Reg::S(0)), &mut Operand::r(Reg::S(1)));
-        assert!(matches!(r, Err(crate::VmError::Raised(ErrorCode::EDIABAS_BIP_0010))));
-        assert_eq!(vm.st_table.table_index, -1);
+        assert!(matches!(r, Err(crate::VmError::Raised(ErrorCode::EDIABAS_SYS_0002))));
     }
 }
