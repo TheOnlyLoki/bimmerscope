@@ -7,6 +7,7 @@ use ratatui::widgets::{ListState, TableState};
 use sgbd::Sgbd;
 
 use crate::cable::{self, Port};
+use crate::diag::{Command, Found, FaultMemory, Handle, ScanState};
 use crate::index::{EcuFile, Update};
 
 const CABLE_RESCAN: Duration = Duration::from_secs(2);
@@ -71,11 +72,21 @@ pub struct App {
 
     pub ports: Vec<Port>,
     last_scan: Instant,
+    /// Tab follows the cable (switches to Fault memory) until the user picks a tab.
+    tab_auto: bool,
+    had_ftdi: bool,
+
+    pub worker: Handle,
+    pub memory: FaultMemory,
+    pub fault_list: ListState,
+    pub confirm_clear: bool,
     pub quit: bool,
 }
 
 impl App {
-    pub fn new(ecu_dir: PathBuf, files: Vec<EcuFile>, index_rx: Receiver<Update>) -> Self {
+    pub fn new(ecu_dir: PathBuf, files: Vec<EcuFile>, index_rx: Receiver<Update>, worker: Handle) -> Self {
+        let ports = cable::scan();
+        let had_ftdi = ports.iter().any(Port::is_ftdi);
         let mut app = Self {
             ecu_dir,
             visible: (0..files.len()).collect(),
@@ -92,8 +103,14 @@ impl App {
             table_state: TableState::default(),
             detail_scroll: 0,
             loaded: None,
-            ports: cable::scan(),
+            ports,
             last_scan: Instant::now(),
+            tab_auto: true,
+            had_ftdi,
+            worker,
+            memory: FaultMemory::default(),
+            fault_list: ListState::default(),
+            confirm_clear: false,
             quit: false,
         };
         if !app.visible.is_empty() {
@@ -103,7 +120,7 @@ impl App {
         app
     }
 
-    /// Background work between frames: index updates and cable rescans.
+    /// Background work between frames: index updates, cable rescans, worker events.
     pub fn tick(&mut self) {
         let mut changed = false;
         while let Ok(u) = self.index_rx.try_recv() {
@@ -121,10 +138,25 @@ impl App {
             self.ports = cable::scan();
             self.last_scan = Instant::now();
         }
+        let ftdi = self.ports.iter().any(Port::is_ftdi);
+        if ftdi && !self.had_ftdi && self.tab_auto {
+            self.tab = Tab::Faults;
+        }
+        self.had_ftdi = ftdi;
+
+        while let Ok(ev) = self.worker.rx.try_recv() {
+            self.memory.apply(ev);
+        }
+        self.fix_module_selection();
+        self.ensure_faults();
     }
 
     pub fn selected_file(&self) -> Option<&EcuFile> {
         self.file_state.selected().and_then(|i| self.visible.get(i)).map(|&i| &self.files[i])
+    }
+
+    pub fn selected_module(&self) -> Option<&Found> {
+        self.fault_list.selected().and_then(|i| self.memory.found.get(i))
     }
 
     pub fn sgbd(&self) -> Option<&Sgbd> {
@@ -191,10 +223,18 @@ impl App {
             }
             return;
         }
+        if self.tab == Tab::Faults && self.confirm_clear {
+            self.on_confirm_key(key.code);
+            return;
+        }
         match key.code {
             KeyCode::Char('q') => self.quit = true,
             KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => self.quit = true,
-            KeyCode::Char(c @ '1'..='4') => self.tab = Tab::ALL[c as usize - '1' as usize],
+            KeyCode::Char(c @ '1'..='4') => {
+                self.tab = Tab::ALL[c as usize - '1' as usize];
+                self.tab_auto = false;
+            }
+            _ if self.tab == Tab::Faults => self.on_faults_key(key.code),
             _ if self.tab != Tab::Ecus => {}
             KeyCode::Char('/') => {
                 self.editing_filter = true;
@@ -225,6 +265,69 @@ impl App {
             }
             code => self.on_move(code),
         }
+    }
+
+    fn on_faults_key(&mut self, code: KeyCode) {
+        match code {
+            KeyCode::Char('s' | 'S') => self.start_scan(),
+            KeyCode::Char('c' | 'C') => self.confirm_clear = self.selected_module().is_some(),
+            KeyCode::Up | KeyCode::Char('k') => self.move_module(-1),
+            KeyCode::Down | KeyCode::Char('j') => self.move_module(1),
+            _ => {}
+        }
+    }
+
+    fn on_confirm_key(&mut self, code: KeyCode) {
+        match code {
+            KeyCode::Char('y' | 'Y') => {
+                self.confirm_clear = false;
+                if let Some(id) = self.selected_module().map(|m| m.id.clone()) {
+                    self.send(Command::ClearFaults(id));
+                }
+            }
+            KeyCode::Char('n' | 'N') | KeyCode::Esc => self.confirm_clear = false,
+            _ => {}
+        }
+    }
+
+    fn start_scan(&mut self) {
+        if matches!(self.memory.scan, ScanState::Running { .. }) {
+            return;
+        }
+        self.memory.begin_scan();
+        self.fault_list.select(None);
+        self.send(Command::Scan);
+    }
+
+    fn move_module(&mut self, delta: isize) {
+        let n = self.memory.found.len();
+        if n == 0 {
+            return;
+        }
+        let cur = self.fault_list.selected().unwrap_or(0) as isize;
+        self.fault_list.select(Some((cur + delta).clamp(0, n as isize - 1) as usize));
+    }
+
+    fn fix_module_selection(&mut self) {
+        let n = self.memory.found.len();
+        let sel = (n > 0).then(|| self.fault_list.selected().filter(|&i| i < n).unwrap_or(0));
+        self.fault_list.select(sel);
+    }
+
+    /// Asks the worker for the selected module's faults once, unless already cached.
+    fn ensure_faults(&mut self) {
+        let Some(id) = self.selected_module().map(|m| m.id.clone()) else {
+            return;
+        };
+        if self.memory.needs_read(&id) {
+            self.memory.requested.insert(id.clone());
+            self.send(Command::ReadFaults(id));
+        }
+    }
+
+    fn send(&self, cmd: Command) {
+        // A dead worker shows up as no events; nothing else to do here.
+        let _ = self.worker.tx.send(cmd);
     }
 
     fn on_move(&mut self, code: KeyCode) {

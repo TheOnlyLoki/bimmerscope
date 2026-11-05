@@ -162,6 +162,7 @@ name = "bmwa"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "best",
  "clap",
  "ratatui",
  "sgbd",
