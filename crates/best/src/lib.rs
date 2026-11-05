@@ -11,6 +11,7 @@ pub mod operand;
 pub mod ops;
 pub mod regs;
 pub mod result;
+pub mod sim;
 pub mod vm;
 
 pub use error_code::ErrorCode;
