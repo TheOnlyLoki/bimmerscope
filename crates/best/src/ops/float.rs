@@ -178,8 +178,10 @@ pub(crate) fn op_flt2fix(vm: &mut Vm, oc: &OpCode, arg0: &mut Operand, arg1: &mu
     }
 
     let value = vm.op_float(arg1)?;
-    // C# `(uint)double`: saturating on .NET 9+ (NaN and negatives give 0).
-    let result = value as u32;
+    // C# `(uint)double` on .NET 8 x64 (the reference): truncate to a 64-bit
+    // integer, then keep the low 32 bits, so -42.4 gives 0xFFFFFFD6.
+    // .NET 9 saturates instead; golden tests follow .NET 8.
+    let result = value as i64 as u32;
     vm.op_set_raw(arg0, Value::Int(result), 1)?;
     vm.flags.overflow = false;
     vm.flags.update_flags(result, 4);
@@ -675,9 +677,9 @@ mod tests {
 
         vm.regs.set_float(Reg::F(0), -1.0).unwrap();
         op_flt2fix(&mut vm, oc(), &mut a0, &mut a1).unwrap();
-        // C# saturates negative doubles to 0 when cast to uint.
-        assert_eq!(vm.regs.value(Reg::L(0)).unwrap(), 0);
-        assert!(vm.flags.zero);
+        // .NET 8: negative doubles wrap (two's complement).
+        assert_eq!(vm.regs.value(Reg::L(0)).unwrap(), 0xFFFF_FFFF);
+        assert!(vm.flags.sign);
     }
 
     #[test]

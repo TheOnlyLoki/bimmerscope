@@ -960,3 +960,19 @@ mod tests {
         assert!(vm.flags.zero && !vm.flags.overflow && vm.flags.carry);
     }
 }
+
+#[cfg(test)]
+mod float_move_tests {
+    use super::*;
+    use crate::regs::Reg;
+
+    /// SGBDs encode `move F0, F2` with address mode RegS; C# copies the float.
+    #[test]
+    fn move_float_register_in_regs_mode() {
+        let mut vm = Vm::for_test();
+        vm.regs.set_float(Reg::F(2), 140.5).unwrap();
+        let f = |r| Operand::new(AddrMode::RegS, OpData::Reg(r), OpData::None, OpData::None);
+        op_move(&mut vm, &super::super::OPCODES[0], &mut f(Reg::F(0)), &mut f(Reg::F(2))).unwrap();
+        assert_eq!(vm.regs.float(Reg::F(0)).unwrap(), 140.5);
+    }
+}

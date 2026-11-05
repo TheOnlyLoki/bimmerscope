@@ -29,12 +29,16 @@ fn golden_jobs_match_ediabaslib() {
     let mut failed = Vec::new();
     for path in paths {
         let stem = path.file_stem().unwrap().to_string_lossy().into_owned();
+        if path.extension().is_none_or(|e| e != "txt") {
+            continue;
+        }
         let Some((sgbd, job)) = stem.split_once("__") else { continue };
+        let args = std::fs::read_to_string(path.with_extension("args")).unwrap_or_default();
         let text = std::fs::read_to_string(&path).unwrap();
 
         let mut ediabas = Ediabas::new(&ecu);
         ediabas.set_interface(Box::new(SimInterface::open(&sim).unwrap()));
-        let run = ediabas.resolve_sgbd(sgbd).and_then(|_| ediabas.execute_job(job, "", ""));
+        let run = ediabas.resolve_sgbd(sgbd).and_then(|_| ediabas.execute_job(job, args.trim(), ""));
         let actual = common::format_result_sets(ediabas.result_sets());
         let expected = expected_sets(&text);
 
