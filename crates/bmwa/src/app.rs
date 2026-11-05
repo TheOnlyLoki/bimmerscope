@@ -79,6 +79,8 @@ pub struct App {
     pub worker: Handle,
     pub memory: FaultMemory,
     pub fault_list: ListState,
+    /// First fault card shown for the selected module. Reset when the module changes.
+    pub fault_scroll: usize,
     pub confirm_clear: bool,
     pub quit: bool,
 }
@@ -110,6 +112,7 @@ impl App {
             worker,
             memory: FaultMemory::default(),
             fault_list: ListState::default(),
+            fault_scroll: 0,
             confirm_clear: false,
             quit: false,
         };
@@ -271,9 +274,29 @@ impl App {
         match code {
             KeyCode::Char('s' | 'S') => self.start_scan(),
             KeyCode::Char('c' | 'C') => self.confirm_clear = self.selected_module().is_some(),
-            KeyCode::Up | KeyCode::Char('k') => self.move_module(-1),
-            KeyCode::Down | KeyCode::Char('j') => self.move_module(1),
+            KeyCode::Up => self.move_module(-1),
+            KeyCode::Down => self.move_module(1),
+            KeyCode::PageDown | KeyCode::Char('j') => self.scroll_faults(1),
+            KeyCode::PageUp | KeyCode::Char('k') => self.scroll_faults(-1),
             _ => {}
+        }
+    }
+
+    /// Fault cards stored for the selected module.
+    pub fn selected_fault_count(&self) -> usize {
+        self.selected_module().and_then(|m| self.memory.faults.get(&m.id)).map_or(0, Vec::len)
+    }
+
+    fn scroll_faults(&mut self, delta: isize) {
+        let n = self.selected_fault_count();
+        self.fault_scroll = if n == 0 { 0 } else { (self.fault_scroll as isize + delta).clamp(0, n as isize - 1) as usize };
+    }
+
+    /// Moves the module selection. Scroll goes back to the top when the module changes.
+    fn select_module(&mut self, sel: Option<usize>) {
+        if sel != self.fault_list.selected() {
+            self.fault_list.select(sel);
+            self.fault_scroll = 0;
         }
     }
 
@@ -295,7 +318,7 @@ impl App {
             return;
         }
         self.memory.begin_scan();
-        self.fault_list.select(None);
+        self.select_module(None);
         self.send(Command::Scan);
     }
 
@@ -305,13 +328,13 @@ impl App {
             return;
         }
         let cur = self.fault_list.selected().unwrap_or(0) as isize;
-        self.fault_list.select(Some((cur + delta).clamp(0, n as isize - 1) as usize));
+        self.select_module(Some((cur + delta).clamp(0, n as isize - 1) as usize));
     }
 
     fn fix_module_selection(&mut self) {
         let n = self.memory.found.len();
         let sel = (n > 0).then(|| self.fault_list.selected().filter(|&i| i < n).unwrap_or(0));
-        self.fault_list.select(sel);
+        self.select_module(sel);
     }
 
     /// Asks the worker for the selected module's faults once, unless already cached.

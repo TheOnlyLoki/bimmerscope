@@ -2,6 +2,7 @@
 
 mod app;
 mod cable;
+mod config;
 mod diag;
 mod index;
 mod modules;
@@ -18,9 +19,9 @@ use ratatui::crossterm::event::{self, Event, KeyEventKind};
 #[derive(Parser, Clone)]
 #[command(version, about)]
 struct Args {
-    /// Directory with the ECU description files (*.prg, *.grp).
+    /// Directory with the ECU description files (*.prg, *.grp). Remembered for next runs.
     #[arg(long, env = "BMWA_ECU_DIR")]
-    ecu_dir: PathBuf,
+    ecu_dir: Option<PathBuf>,
     /// Answer diagnostic requests from an EdiabasLib .sim file instead of a car.
     #[arg(long, env = "BMWA_SIM_FILE")]
     sim: Option<PathBuf>,
@@ -45,10 +46,23 @@ fn main() -> anyhow::Result<()> {
     if let Some(sim) = &args.sim {
         std::fs::metadata(sim).with_context(|| format!("sim file {}", sim.display()))?;
     }
-    let files = index::list(&args.ecu_dir).with_context(|| format!("reading {}", args.ecu_dir.display()))?;
+    let (ecu_dir, given) = match args.ecu_dir.clone() {
+        Some(dir) => (dir, true),
+        None => match config::load_ecu_dir() {
+            Some(dir) => (dir, false),
+            None => {
+                eprintln!("No ECU files folder set. Run once with: bmwa --ecu-dir /path/to/ecu");
+                std::process::exit(2);
+            }
+        },
+    };
+    let files = index::list(&ecu_dir).with_context(|| format!("reading {}", ecu_dir.display()))?;
+    if given && let Err(e) = config::save_ecu_dir(&ecu_dir) {
+        eprintln!("warning: could not remember ECU folder: {e}");
+    }
     let rx = index::spawn(files.iter().map(|f| f.path.clone()).collect());
-    let worker = diag::spawn(args.ecu_dir.clone(), args.clone());
-    let mut app = app::App::new(args.ecu_dir, files, rx, worker);
+    let worker = diag::spawn(ecu_dir.clone(), args.clone());
+    let mut app = app::App::new(ecu_dir, files, rx, worker);
     if args.sim.is_some() || args.port.is_some() {
         app.tab = app::Tab::Faults;
     }

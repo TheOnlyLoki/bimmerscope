@@ -66,7 +66,14 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
             ("1-4", "tabs"),
             ("q", "quit"),
         ],
-        (Tab::Faults, _) => &[("S", "scan"), ("↑↓", "module"), ("C", "clear faults"), ("1-4", "tabs"), ("q", "quit")],
+        (Tab::Faults, _) => &[
+            ("S", "scan"),
+            ("↑↓", "module"),
+            ("PgUp/PgDn", "faults"),
+            ("C", "clear faults"),
+            ("1-4", "tabs"),
+            ("q", "quit"),
+        ],
         _ => &[("1-4", "tabs"), ("q", "quit")],
     };
     let mut spans = Vec::new();
@@ -350,10 +357,21 @@ fn draw_fault_cards(f: &mut Frame, area: Rect, app: &App, selected: Option<&crat
             f.render_widget(message("No stored faults.".into(), OK), inner);
             return;
         }
-        let shown = faults.len().min(inner.height as usize / CARD_HEIGHT as usize);
-        let rows = Layout::vertical(std::iter::repeat_n(Constraint::Length(CARD_HEIGHT), shown)).split(inner);
-        for (fault, row) in faults.iter().zip(rows.iter()) {
+        let start = app.fault_scroll.min(faults.len() - 1);
+        let left = faults.len() - start;
+        let fits = inner.height as usize / CARD_HEIGHT as usize;
+        // When cards are cut off below, the last row holds the "+N more" line.
+        let hidden = left > fits && inner.height > 0;
+        let shown = if hidden { (inner.height.saturating_sub(1) as usize / CARD_HEIGHT as usize).min(left) } else { left.min(fits) };
+        let cards = Rect { height: shown as u16 * CARD_HEIGHT, ..inner };
+        let rows = Layout::vertical(std::iter::repeat_n(Constraint::Length(CARD_HEIGHT), shown)).split(cards);
+        for (fault, row) in faults[start..].iter().zip(rows.iter()) {
             draw_card(f, *row, fault);
+        }
+        if hidden {
+            let more = Rect { y: inner.y + inner.height - 1, height: 1, ..inner };
+            let text = format!("+{} more (PgDn)", left - shown);
+            f.render_widget(Paragraph::new(Line::styled(text, Style::new().fg(DIM))), more);
         }
     } else if let Some(err) = app.memory.errors.get(&m.id) {
         f.render_widget(message(err.clone(), M_RED), inner);

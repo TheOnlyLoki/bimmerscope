@@ -208,6 +208,8 @@ pub struct FaultMemory {
     /// Ids with a read in flight or done, so reads are not repeated every frame.
     pub requested: HashSet<String>,
     pub notice: Option<String>,
+    /// Module whose faults were just cleared. The next re-read decides the notice.
+    pub verify_clear: Option<String>,
 }
 
 impl FaultMemory {
@@ -244,6 +246,14 @@ impl FaultMemory {
                     f.fault_count = faults.len();
                 }
                 self.errors.remove(&id);
+                if self.verify_clear.as_deref() == Some(id.as_str()) {
+                    self.verify_clear = None;
+                    self.notice = Some(if faults.is_empty() {
+                        "Stored faults deleted.".into()
+                    } else {
+                        "Some faults came back. They are still present in the car.".into()
+                    });
+                }
                 self.faults.insert(id, faults);
             }
             Event::Cleared { id, ok, message } => {
@@ -251,12 +261,16 @@ impl FaultMemory {
                     self.faults.remove(&id);
                     self.errors.remove(&id);
                     self.requested.remove(&id);
-                    self.notice = Some("Stored faults deleted.".into());
+                    self.notice = Some("Checking stored faults...".into());
+                    self.verify_clear = Some(id);
                 } else {
                     self.notice = Some(message);
                 }
             }
             Event::Error { id, message } => {
+                if self.verify_clear.as_deref() == Some(id.as_str()) {
+                    self.verify_clear = None;
+                }
                 if !id.is_empty() {
                     self.errors.insert(id, message.clone());
                 }
@@ -377,6 +391,22 @@ mod tests {
     }
 
     #[test]
+    fn clear_notice_waits_for_reread() {
+        let mut m = FaultMemory::default();
+        m.apply(Event::ModuleFound { id: "d_pdc".into(), variant: "pdc".into(), fault_count: 1 });
+        m.apply(Event::Cleared { id: "d_pdc".into(), ok: true, message: String::new() });
+        assert_ne!(m.notice.as_deref(), Some("Stored faults deleted."));
+
+        let stuck = Fault { code: 0xE205, text: "t".into(), symptom: String::new(), present: String::new(), warning: String::new() };
+        m.apply(Event::Faults { id: "d_pdc".into(), faults: vec![stuck] });
+        assert_eq!(m.notice.as_deref(), Some("Some faults came back. They are still present in the car."));
+
+        m.apply(Event::Cleared { id: "d_pdc".into(), ok: true, message: String::new() });
+        m.apply(Event::Faults { id: "d_pdc".into(), faults: Vec::new() });
+        assert_eq!(m.notice.as_deref(), Some("Stored faults deleted."));
+    }
+
+    #[test]
     fn read_error_is_kept_per_module() {
         let mut m = FaultMemory::default();
         m.apply(Event::Error { id: "d_egs".into(), message: "no answer".into() });
@@ -394,7 +424,7 @@ mod tests {
             eprintln!("skipped: set BMWA_ECU_DIR and BMWA_SIM_FILE");
             return;
         };
-        let args = Args { ecu_dir: PathBuf::from(&dir), sim: Some(PathBuf::from(sim)), port: None };
+        let args = Args { ecu_dir: Some(PathBuf::from(&dir)), sim: Some(PathBuf::from(sim)), port: None };
         let handle = spawn(PathBuf::from(&dir), args);
         handle.tx.send(Command::Scan).unwrap();
 
