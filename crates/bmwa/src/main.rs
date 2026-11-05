@@ -1,4 +1,4 @@
-//! bmwa: open source BMW diagnostics in the terminal.
+//! bmwa (bimmerscope): open source BMW diagnostics in the terminal.
 
 mod app;
 mod cable;

@@ -35,7 +35,7 @@ fn draw_header(f: &mut Frame, area: Rect, app: &App) {
         Span::styled("▐█", Style::new().fg(M_LIGHT)),
         Span::styled("█", Style::new().fg(M_DARK)),
         Span::styled("█▌", Style::new().fg(M_RED)),
-        Span::styled(" BMW ANALYZER ", Style::new().bold()),
+        Span::styled(" BIMMERSCOPE ", Style::new().bold()),
     ];
     for (i, tab) in Tab::ALL.iter().enumerate() {
         let label = format!(" {} {} ", i + 1, tab.title());

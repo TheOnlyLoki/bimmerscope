@@ -1,6 +1,6 @@
 # Porting opcode handlers from C# to Rust
 
-Source: `/home/lukas/Projects/ediabaslib/EdiabasLib/EdiabasLib/EdOperations.cs`
+Source: `EdiabasLib/EdiabasLib/EdOperations.cs` in [ediabaslib](https://github.com/uholeschak/ediabaslib)
 (handlers `private static void OpXxx(EdiabasNet ediabas, OpCode oc, Operand arg0, Operand arg1)`).
 Helpers they call live in the same file or in `EdiabasNet.cs` next to it.
 
