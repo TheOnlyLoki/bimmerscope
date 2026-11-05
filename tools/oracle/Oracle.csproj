@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Builds EdiabasLib's EdiabasTest for net8.0 on Linux, as a reference
+       to compare the Rust interpreter against. Sources come from a
+       separate ediabaslib checkout mounted at /ref. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);CS0618;CA1416;SYSLIB0014;SYSLIB0021;SYSLIB0023;SYSLIB0039</NoWarn>
+    <AssemblyName>ediabas-oracle</AssemblyName>
+    <RefDir Condition="'$(RefDir)' == ''">/ref/EdiabasLib</RefDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(RefDir)/EdiabasLib/*.cs" />
+    <Compile Remove="$(RefDir)/EdiabasLib/*Android.cs" />
+    <Compile Include="$(RefDir)/EdiabasTest/Program.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
+    <PackageReference Include="InTheHand.Net.Bluetooth" Version="4.2.5" />
+    <PackageReference Include="InTheHand.BluetoothLE" Version="4.0.45" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.14" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+    <PackageReference Include="Mono.Options" Version="6.12.0.148" />
+    <PackageReference Include="Ranges" Version="1.0.11" />
+  </ItemGroup>
+</Project>

@@ -14,6 +14,7 @@ const MAGIC: &[u8] = b"@EDIABAS OBJECT";
 const XOR_KEY: u8 = 0xF7;
 
 const OFF_KIND: usize = 0x10;
+const OFF_ARRAY_SIZE: usize = 0x18;
 const OFF_USES: usize = 0x7C;
 const OFF_TABLES: usize = 0x84;
 const OFF_JOBS: usize = 0x88;
@@ -71,6 +72,8 @@ pub struct Table {
 #[derive(Debug, Clone)]
 pub struct Sgbd {
     pub kind: Kind,
+    /// Size of each BEST/2 string register (header 0x18, 0 means 1024).
+    pub array_size: u32,
     pub version: Version,
     pub uses: Vec<String>,
     pub jobs: Vec<Job>,
@@ -89,6 +92,10 @@ impl Sgbd {
         r.check_magic()?;
         Ok(Self {
             kind: r.kind()?,
+            array_size: match r.plain_i32(OFF_ARRAY_SIZE)? as u32 {
+                0 => 1024,
+                n => n,
+            },
             version: r.version()?,
             uses: r.uses()?,
             jobs: r.jobs()?,
@@ -96,6 +103,20 @@ impl Sgbd {
             description: r.description()?,
             data,
         })
+    }
+
+    /// An SGBD with no jobs, tables or code; for tests.
+    pub fn empty() -> Self {
+        Self {
+            kind: Kind::Program,
+            array_size: 1024,
+            version: Version::default(),
+            uses: Vec::new(),
+            jobs: Vec::new(),
+            tables: Vec::new(),
+            description: Description::default(),
+            data: Vec::new(),
+        }
     }
 
     pub fn data(&self) -> &[u8] {
