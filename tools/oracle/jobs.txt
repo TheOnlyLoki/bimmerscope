@@ -1,0 +1,6 @@
+# Offline jobs (no ECU communication)
+jbbf87 INFO
+d_motor INFO
+# Simulated jobs (obd.sim, BMW-FAST)
+d_motor IDENT
+d_motor FS_LESEN
