@@ -124,8 +124,10 @@ pub(crate) fn op_xawlen(
         return internal("OpXawlen: Invalid data length");
     }
     let answer: Vec<i16> = data
-        .chunks_exact(2)
-        .map(|c| i16::from_le_bytes([c[0], c[1]]))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|c| i16::from_le_bytes(*c))
         .collect();
     let r = iface_mut(vm)?.set_comm_answer_len(answer);
     ok_or_set(vm, r)?;

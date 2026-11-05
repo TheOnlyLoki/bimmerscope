@@ -2,12 +2,31 @@
 //! Linux only for now.
 
 use std::fs;
-use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 
 const SYSFS_USB_SERIAL: &str = "/sys/bus/usb-serial/devices";
-/// `O_NONBLOCK` on Linux: probe the tty without waiting for carrier.
-const O_NONBLOCK: i32 = 0o4000;
+/// Can we open the tty? Probes with `O_NONBLOCK` so it does not wait for carrier.
+#[cfg(unix)]
+fn can_open(dev: &Path) -> bool {
+    use std::os::unix::fs::OpenOptionsExt;
+    /// `O_NONBLOCK` on Linux.
+    const O_NONBLOCK: i32 = 0o4000;
+    fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .custom_flags(O_NONBLOCK)
+        .open(dev)
+        .is_ok()
+}
+
+#[cfg(not(unix))]
+fn can_open(dev: &Path) -> bool {
+    fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(dev)
+        .is_ok()
+}
 
 #[derive(Debug, Clone)]
 pub struct Port {
@@ -50,12 +69,7 @@ fn port(sys: &Path) -> Option<Port> {
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
         .unwrap_or_default();
     let dev = PathBuf::from("/dev").join(&name);
-    let accessible = fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .custom_flags(O_NONBLOCK)
-        .open(&dev)
-        .is_ok();
+    let accessible = can_open(&dev);
     Some(Port {
         latency_ms: read(&sys.join("latency_timer")).parse().ok(),
         vid_pid: format!(

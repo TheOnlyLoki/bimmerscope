@@ -658,10 +658,8 @@ fn convert_data(
                         operator_type = None;
                     }
                 }
-            } else if let Some(v) = item.operator_value {
-                operator_value = v;
             } else {
-                return None;
+                operator_value = item.operator_value?;
             }
 
             if let Some(op) = operator_type {
