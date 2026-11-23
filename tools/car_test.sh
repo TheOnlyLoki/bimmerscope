@@ -2,9 +2,22 @@
 # First car test: runs IDENT and FS_LESEN (read only) on a few modules and
 # saves results, telegrams and traces to ./car-logs/<time>/.
 # usage: tools/car_test.sh <ecu-dir> [port]
+# Without port: the first FTDI cable found (like the app).
 set -u
 ecu=${1:?usage: tools/car_test.sh <ecu-dir> [port]}
-port=${2:-/dev/ttyUSB0}
+port=${2:-}
+if [ -z "$port" ]; then
+    for d in /sys/bus/usb-serial/devices/*; do
+        [ "$(basename "$(readlink -f "$d/driver")")" = ftdi_sio ] || continue
+        port=/dev/$(basename "$d")
+        break
+    done
+fi
+if [ -z "$port" ] || [ ! -e "$port" ]; then
+    echo "No cable found. Plug it in, or pass the port: tools/car_test.sh $ecu /dev/ttyUSB1"
+    exit 1
+fi
+echo "Cable: $port"
 out=car-logs/$(date +%Y%m%d-%H%M%S)
 mkdir -p "$out"
 cargo build --release -q -p obd --example car_job || exit 1

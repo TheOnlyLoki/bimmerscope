@@ -61,17 +61,19 @@ Read only: nothing in this guide clears faults or changes the car.
    tools/car_test.sh ~/ecu
    ```
 
+   It finds the cable by itself and prints `Cable: /dev/ttyUSB…`.
    It runs IDENT on 5 modules and reads the fault memory of 2. Each line shows
    `exit 0` when the module answered. Takes up to 6 minutes when nothing answers.
 
 5. If at least one module answered, try the app:
 
    ```bash
-   ./target/release/bmwa --port /dev/ttyUSB0
+   ./target/release/bmwa
    ```
 
    Press `S` and wait for the scan. Look at the faults. **Do not press `C`** (clear) yet.
-   Take a photo or note what you see. Press `q` to quit.
+   Take a photo or note what you see. Press `q` to quit. The app prints
+   `Telegram log: ~/.local/state/bmwa/telegrams-<number>.log`: send that file too.
 
 6. Ignition off, unplug the cable.
 

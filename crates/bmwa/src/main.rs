@@ -9,6 +9,7 @@ mod modules;
 mod ui;
 
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use anyhow::Context;
@@ -30,6 +31,29 @@ struct Args {
     port: Option<String>,
 }
 
+/// Telegram log of the cable interface, written to a file on exit.
+static TELEGRAMS: OnceLock<Arc<Mutex<Vec<String>>>> = OnceLock::new();
+
+/// Writes the telegram log to `$XDG_STATE_HOME/bmwa/` (else `~/.local/state/bmwa/`).
+fn save_telegrams() -> Option<PathBuf> {
+    let log = TELEGRAMS.get()?.lock().ok()?;
+    if log.is_empty() {
+        return None;
+    }
+    let base = std::env::var_os("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/state")))?;
+    let dir = base.join("bmwa");
+    std::fs::create_dir_all(&dir).ok()?;
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?
+        .as_secs();
+    let path = dir.join(format!("telegrams-{secs}.log"));
+    std::fs::write(&path, log.join("\n") + "\n").ok()?;
+    Some(path)
+}
+
 /// Diagnostic interface for the worker thread. Built there, since interfaces are not `Send`.
 fn make_interface(args: &Args) -> Option<Box<dyn best::Interface>> {
     if let Some(path) = &args.sim {
@@ -43,7 +67,9 @@ fn make_interface(args: &Args) -> Option<Box<dyn best::Interface>> {
             .find(|p| p.is_ftdi())
             .map(|p| p.dev.display().to_string())
     })?;
-    Some(Box::new(obd::ObdInterface::new(&port)))
+    let iface = obd::ObdInterface::new(&port);
+    let _ = TELEGRAMS.set(iface.log_handle());
+    Some(Box::new(iface))
 }
 
 fn main() -> anyhow::Result<()> {
@@ -72,7 +98,7 @@ fn main() -> anyhow::Result<()> {
         app.tab = app::Tab::Faults;
     }
 
-    ratatui::run(|terminal| -> anyhow::Result<()> {
+    let result = ratatui::run(|terminal| -> anyhow::Result<()> {
         while !app.quit {
             app.tick();
             terminal.draw(|f| ui::draw(f, &mut app))?;
@@ -84,5 +110,9 @@ fn main() -> anyhow::Result<()> {
             }
         }
         Ok(())
-    })
+    });
+    if let Some(path) = save_telegrams() {
+        eprintln!("Telegram log: {}", path.display());
+    }
+    result
 }
