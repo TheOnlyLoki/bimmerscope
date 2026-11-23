@@ -9,6 +9,8 @@ use sgbd::Sgbd;
 use crate::cable::{self, Port};
 use crate::diag::{Command, FaultMemory, Found, Handle, ScanState};
 use crate::index::{EcuFile, Update};
+use crate::live::{self, LiveState};
+use crate::modules::Module;
 
 const CABLE_RESCAN: Duration = Duration::from_secs(2);
 
@@ -82,6 +84,7 @@ pub struct App {
     /// First fault card shown for the selected module. Reset when the module changes.
     pub fault_scroll: usize,
     pub confirm_clear: bool,
+    pub live: LiveState,
     pub quit: bool,
 }
 
@@ -119,6 +122,7 @@ impl App {
             fault_list: ListState::default(),
             fault_scroll: 0,
             confirm_clear: false,
+            live: LiveState::default(),
             quit: false,
         };
         if !app.visible.is_empty() {
@@ -148,15 +152,70 @@ impl App {
         }
         let ftdi = self.ports.iter().any(Port::is_ftdi);
         if ftdi && !self.had_ftdi && self.tab_auto {
-            self.tab = Tab::Faults;
+            self.set_tab(Tab::Faults);
         }
         self.had_ftdi = ftdi;
 
         while let Ok(ev) = self.worker.rx.try_recv() {
-            self.memory.apply(ev);
+            if ev.is_live() {
+                self.live.apply(ev);
+            } else {
+                self.memory.apply(ev);
+            }
         }
         self.fix_module_selection();
         self.ensure_faults();
+        if self.live.restart {
+            self.live.restart = false;
+            if self.live.running {
+                self.start_live();
+            }
+        }
+        self.ensure_catalog();
+    }
+
+    /// Switches tab. Leaving Live data ends polling and recording.
+    fn set_tab(&mut self, tab: Tab) {
+        if self.tab == Tab::Live && tab != Tab::Live {
+            self.stop_live();
+        }
+        self.tab = tab;
+    }
+
+    /// Modules the Live data picker offers.
+    pub fn live_modules(&self) -> Vec<&'static Module> {
+        live::picker(&self.memory.found)
+    }
+
+    /// Keeps the picker on a module that exists and asks the worker for its
+    /// variant description once.
+    fn ensure_catalog(&mut self) {
+        if self.tab != Tab::Live {
+            return;
+        }
+        let list = self.live_modules();
+        let valid = self
+            .live
+            .selected
+            .as_deref()
+            .is_some_and(|s| list.iter().any(|m| m.id == s));
+        if !valid {
+            self.stop_live();
+            self.live.selected = list.first().map(|m| m.id.to_string());
+            self.reset_live_view();
+        }
+        let Some(group) = self.live.selected.clone() else {
+            return;
+        };
+        if self.live.needs_catalog(&group) {
+            self.live.requested.insert(group.clone());
+            self.send(Command::Catalog(group));
+        }
+    }
+
+    fn reset_live_view(&mut self) {
+        self.live.chart = 0;
+        self.live.list.select(Some(0));
     }
 
     pub fn selected_file(&self) -> Option<&EcuFile> {
@@ -249,10 +308,11 @@ impl App {
             KeyCode::Char('q') => self.quit = true,
             KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => self.quit = true,
             KeyCode::Char(c @ '1'..='4') => {
-                self.tab = Tab::ALL[c as usize - '1' as usize];
+                self.set_tab(Tab::ALL[c as usize - '1' as usize]);
                 self.tab_auto = false;
             }
             _ if self.tab == Tab::Faults => self.on_faults_key(key.code),
+            _ if self.tab == Tab::Live => self.on_live_key(key.code),
             _ if self.tab != Tab::Ecus => {}
             KeyCode::Char('/') => {
                 self.editing_filter = true;
@@ -294,6 +354,152 @@ impl App {
             KeyCode::PageDown | KeyCode::Char('j') => self.scroll_faults(1),
             KeyCode::PageUp | KeyCode::Char('k') => self.scroll_faults(-1),
             _ => {}
+        }
+    }
+
+    fn on_live_key(&mut self, code: KeyCode) {
+        let expert = self.live.expert;
+        match code {
+            KeyCode::Enter => self.toggle_live(),
+            KeyCode::Char('a' | 'A') => {
+                self.live.expert = !expert;
+                self.reset_live_view();
+            }
+            KeyCode::Char('r' | 'R') => self.toggle_recording(),
+            KeyCode::Char(' ') if expert => self.toggle_watched(),
+            KeyCode::Left => self.move_live_module(-1),
+            KeyCode::Right => self.move_live_module(1),
+            KeyCode::Up => self.scroll_live(-1),
+            KeyCode::Down => self.scroll_live(1),
+            KeyCode::Char('j') => self.scroll_live(1),
+            KeyCode::Char('k') => self.scroll_live(-1),
+            KeyCode::PageDown => self.scroll_live(if expert { 10 } else { 3 }),
+            KeyCode::PageUp => self.scroll_live(if expert { -10 } else { -3 }),
+            KeyCode::Char('g' | 'G') if !expert => self.live.overlay = !self.live.overlay,
+            _ => {}
+        }
+    }
+
+    /// Moves the expert list cursor, or the value the chart shows.
+    fn scroll_live(&mut self, delta: isize) {
+        let group = self.live.selected.clone().unwrap_or_default();
+        let len = if self.live.expert {
+            self.live.all_items.get(&group).map_or(0, Vec::len)
+        } else {
+            self.live.items(&group).len()
+        };
+        let cur = if self.live.expert {
+            self.live.list.selected().unwrap_or(0)
+        } else {
+            self.live.chart
+        };
+        let next = (cur as isize + delta).clamp(0, (len as isize - 1).max(0)) as usize;
+        if self.live.expert {
+            self.live.list.select(Some(next));
+        } else {
+            self.live.chart = next;
+        }
+    }
+
+    fn move_live_module(&mut self, delta: isize) {
+        let list = self.live_modules();
+        let cur = self
+            .live
+            .selected
+            .as_deref()
+            .and_then(|s| list.iter().position(|m| m.id == s))
+            .unwrap_or(0) as isize;
+        let next = (cur + delta).clamp(0, list.len() as isize - 1) as usize;
+        if next as isize != cur {
+            self.stop_live();
+            self.live.selected = Some(list[next].id.to_string());
+            self.reset_live_view();
+        }
+    }
+
+    fn toggle_live(&mut self) {
+        if self.live.running {
+            self.stop_live();
+            return;
+        }
+        let Some(group) = self.live.selected.clone() else {
+            return;
+        };
+        if matches!(self.live.catalogs.get(&group), Some(Err(_))) {
+            // Try reading the module again.
+            self.live.catalogs.remove(&group);
+            self.live.requested.remove(&group);
+        } else {
+            self.start_live();
+        }
+    }
+
+    /// Starts (or restarts) polling the watched values of the selected module.
+    fn start_live(&mut self) {
+        let Some(group) = self.live.selected.clone() else {
+            return;
+        };
+        if self.live.catalog(&group).is_none() {
+            self.live.notice = Some("Still reading the module...".into());
+            return;
+        }
+        match self.live.start(&group) {
+            Ok(cmd) => self.send(cmd),
+            Err(message) => {
+                self.stop_live();
+                self.live.notice = Some(message);
+            }
+        }
+    }
+
+    /// Stops polling and a running recording.
+    fn stop_live(&mut self) {
+        if self.live.running {
+            self.send(Command::StopLive);
+        }
+        if let Some(rec) = self.live.stop() {
+            self.live.notice = Some(rec.message());
+        }
+    }
+
+    fn toggle_recording(&mut self) {
+        if let Some(rec) = self.live.stop_recording() {
+            self.live.notice = Some(rec.message());
+            return;
+        }
+        if !self.live.running {
+            self.start_live();
+        }
+        let Some(group) = self.live.selected.clone().filter(|_| self.live.running) else {
+            return;
+        };
+        let Some(dir) = live::state_dir() else {
+            self.live.notice =
+                Some("No place to save: neither XDG_STATE_HOME nor HOME is set.".into());
+            return;
+        };
+        self.live.notice = Some(match self.live.start_recording(&dir, &group) {
+            Ok(path) => format!("Recording to {}", path.display()),
+            Err(e) => format!("Cannot record: {e}"),
+        });
+    }
+
+    /// Adds or removes the value under the expert list cursor.
+    fn toggle_watched(&mut self) {
+        let Some(group) = self.live.selected.clone() else {
+            return;
+        };
+        let item = self
+            .live
+            .list
+            .selected()
+            .and_then(|i| self.live.all_items.get(&group)?.get(i))
+            .cloned();
+        if let Some(item) = item {
+            self.live.toggle(&group, &item);
+            if self.live.running {
+                self.start_live();
+            }
         }
     }
 

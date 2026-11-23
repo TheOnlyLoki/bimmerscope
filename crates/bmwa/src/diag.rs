@@ -4,18 +4,25 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::thread;
+use std::time::{Duration, Instant};
 
 use best::{Ediabas, ResultSet, ResultValue};
+use sgbd::Sgbd;
 
 use crate::Args;
+use crate::live::Catalog;
 use crate::modules::{self, Module};
 
 const JOB_READ_FAULTS: &str = "FS_LESEN";
 const JOB_CLEAR_FAULTS: &str = "FS_LOESCHEN";
 const F_ORT_NR: &str = "F_ORT_NR";
 const NO_ADAPTER: &str = "No adapter connected. Plug in the cable, or start with --sim <file>.";
+/// One polling round takes at least this long, so a fast ECU is not hammered.
+const LIVE_ROUND: Duration = Duration::from_millis(250);
+/// A live job that fails this often in a row is dropped from the round.
+const LIVE_MAX_ERRORS: u32 = 3;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fault {
@@ -33,9 +40,19 @@ pub enum Command {
     Scan,
     ReadFaults(String),
     ClearFaults(String),
+    /// Resolve the module's variant and describe its jobs, for the live data presets.
+    Catalog(String),
+    /// Poll `jobs` (job, arguments) of the module in a loop until `StopLive` or
+    /// any other command. `run` tags the events of this run.
+    Live {
+        run: u64,
+        group: String,
+        jobs: Vec<(String, String)>,
+    },
+    StopLive,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Event {
     /// `done` of `total` modules checked. `done == total` ends the scan.
     ScanProgress {
@@ -65,6 +82,43 @@ pub enum Event {
         id: String,
         message: String,
     },
+    Catalog {
+        group: String,
+        catalog: Result<Catalog, String>,
+    },
+    /// Results of one live job: (job, result name, value), every named result
+    /// but the binary telegrams. `round_end` closes a polling round.
+    LiveValues {
+        run: u64,
+        values: Vec<(String, String, ResultValue)>,
+        at: Instant,
+        round_end: bool,
+    },
+    /// A live job failed. `skipped`: it failed too often and is not polled any more.
+    LiveError {
+        run: u64,
+        job: String,
+        message: String,
+        skipped: bool,
+    },
+    /// The live loop ended. `reason` is set when it was not asked to stop.
+    LiveStopped {
+        run: u64,
+        reason: Option<String>,
+    },
+}
+
+impl Event {
+    /// Events for the Live data tab, not for the fault memory.
+    pub fn is_live(&self) -> bool {
+        matches!(
+            self,
+            Event::Catalog { .. }
+                | Event::LiveValues { .. }
+                | Event::LiveError { .. }
+                | Event::LiveStopped { .. }
+        )
+    }
 }
 
 /// UI side of the worker: send commands, drain events.
@@ -83,11 +137,32 @@ pub fn spawn(ecu_dir: PathBuf, args: Args) -> Handle {
         if let Some(iface) = crate::make_interface(&args) {
             ed.set_interface(iface);
         }
-        for cmd in cmd_rx {
+        // A command that ended a live loop is handled before waiting for the next.
+        let mut pending = None;
+        loop {
+            let cmd = match pending.take() {
+                Some(cmd) => cmd,
+                None => match cmd_rx.recv() {
+                    Ok(cmd) => cmd,
+                    Err(_) => break,
+                },
+            };
             let alive = match cmd {
                 Command::Scan => scan(&mut ed, &ev_tx),
                 Command::ReadFaults(id) => read_faults(&mut ed, &id, &ev_tx),
                 Command::ClearFaults(id) => clear_faults(&mut ed, &id, &ev_tx),
+                Command::Catalog(group) => catalog(&mut ed, &group, &ev_tx),
+                Command::Live { run, group, jobs } => {
+                    match live(&mut ed, &cmd_rx, &ev_tx, run, &group, &jobs) {
+                        Flow::Idle => true,
+                        Flow::Next(cmd) => {
+                            pending = Some(cmd);
+                            true
+                        }
+                        Flow::Quit => false,
+                    }
+                }
+                Command::StopLive => true,
             };
             if !alive {
                 break;
@@ -224,6 +299,165 @@ fn clear_faults(ed: &mut Ediabas, id: &str, tx: &Sender<Event>) -> bool {
         },
     };
     emit(tx, ev)
+}
+
+/// Case-insensitive file lookup in the ECU directory.
+fn find_file(dir: &Path, name: &str) -> Option<PathBuf> {
+    std::fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .find(|e| e.file_name().to_string_lossy().eq_ignore_ascii_case(name))
+        .map(|e| e.path())
+}
+
+fn load_catalog(ed: &mut Ediabas, group: &str) -> Result<Catalog, String> {
+    if ed.iface_mut().is_none() {
+        return Err(NO_ADAPTER.into());
+    }
+    ed.resolve_sgbd(group).map_err(|e| e.to_string())?;
+    let variant = ed.variant_name();
+    let file = format!("{variant}.prg");
+    let path = find_file(ed.ecu_dir(), &file).ok_or_else(|| format!("{file} not found"))?;
+    let sgbd = Sgbd::open(&path).map_err(|e| e.to_string())?;
+    Ok(Catalog::from_sgbd(group, &variant, &sgbd))
+}
+
+fn catalog(ed: &mut Ediabas, group: &str, tx: &Sender<Event>) -> bool {
+    let catalog = load_catalog(ed, group);
+    emit(
+        tx,
+        Event::Catalog {
+            group: group.into(),
+            catalog,
+        },
+    )
+}
+
+/// How a live loop ended.
+enum Flow {
+    /// Stopped on request.
+    Idle,
+    /// Another command interrupted it. Run that next.
+    Next(Command),
+    /// The UI side is gone.
+    Quit,
+}
+
+/// Runs one live job. Every named result but the binary telegrams comes back.
+fn live_job(
+    ed: &mut Ediabas,
+    job: &str,
+    args: &str,
+) -> Result<Vec<(String, String, ResultValue)>, String> {
+    let sets = ed.execute_job(job, args, "").map_err(|e| e.to_string())?;
+    let status = sets
+        .iter()
+        .rev()
+        .map(|s| text(s, "JOB_STATUS"))
+        .find(|t| !t.is_empty());
+    if let Some(status) = status
+        && status != "OKAY"
+    {
+        return Err(status);
+    }
+    Ok(sets
+        .iter()
+        .skip(1)
+        .flat_map(|s| s.0.iter())
+        .filter(|d| !d.name.starts_with('_') && !matches!(d.value, ResultValue::Bytes(_)))
+        .map(|d| (job.to_string(), d.name.clone(), d.value.clone()))
+        .collect())
+}
+
+/// Polls the jobs round after round. Looks for a new command between jobs,
+/// so Stop and tab changes act within one job time.
+fn live(
+    ed: &mut Ediabas,
+    rx: &Receiver<Command>,
+    tx: &Sender<Event>,
+    run: u64,
+    group: &str,
+    jobs: &[(String, String)],
+) -> Flow {
+    let stopped = |reason: Option<String>| emit(tx, Event::LiveStopped { run, reason });
+    // The loop ends: tell the UI, then hand on the command that ended it.
+    let interrupted = |cmd: Command| {
+        let alive = stopped(None);
+        match cmd {
+            Command::StopLive if alive => Flow::Idle,
+            cmd if alive => Flow::Next(cmd),
+            _ => Flow::Quit,
+        }
+    };
+    let failed = |reason: String| {
+        if stopped(Some(reason)) {
+            Flow::Idle
+        } else {
+            Flow::Quit
+        }
+    };
+    if ed.iface_mut().is_none() {
+        return failed(NO_ADAPTER.into());
+    }
+    if let Err(e) = ed.resolve_sgbd(group) {
+        return failed(e.to_string());
+    }
+    let mut errors = vec![0u32; jobs.len()];
+    loop {
+        let round = Instant::now();
+        let mut polled = 0;
+        for (i, (job, args)) in jobs.iter().enumerate() {
+            match rx.try_recv() {
+                Ok(cmd) => return interrupted(cmd),
+                Err(TryRecvError::Empty) => {}
+                Err(TryRecvError::Disconnected) => return Flow::Quit,
+            }
+            if errors[i] >= LIVE_MAX_ERRORS {
+                continue;
+            }
+            polled += 1;
+            let ev = match live_job(ed, job, args) {
+                Ok(values) => {
+                    errors[i] = 0;
+                    Event::LiveValues {
+                        run,
+                        values,
+                        at: Instant::now(),
+                        round_end: false,
+                    }
+                }
+                Err(message) => {
+                    errors[i] += 1;
+                    Event::LiveError {
+                        run,
+                        job: job.clone(),
+                        message,
+                        skipped: errors[i] >= LIVE_MAX_ERRORS,
+                    }
+                }
+            };
+            if !emit(tx, ev) {
+                return Flow::Quit;
+            }
+        }
+        if polled == 0 {
+            return failed("The module does not answer.".into());
+        }
+        let end = Event::LiveValues {
+            run,
+            values: Vec::new(),
+            at: Instant::now(),
+            round_end: true,
+        };
+        if !emit(tx, end) {
+            return Flow::Quit;
+        }
+        match rx.recv_timeout(LIVE_ROUND.saturating_sub(round.elapsed())) {
+            Ok(cmd) => return interrupted(cmd),
+            Err(RecvTimeoutError::Timeout) => {}
+            Err(RecvTimeoutError::Disconnected) => return Flow::Quit,
+        }
+    }
 }
 
 /// Faults are the result sets after set 0 that carry `F_ORT_NR`.
@@ -382,6 +616,11 @@ impl FaultMemory {
                 }
                 self.notice = Some(message);
             }
+            // Live data events go to `LiveState`.
+            Event::Catalog { .. }
+            | Event::LiveValues { .. }
+            | Event::LiveError { .. }
+            | Event::LiveStopped { .. } => {}
         }
     }
 }
@@ -394,6 +633,10 @@ mod tests {
     use best::{ResultData, ResultType};
 
     use super::*;
+
+    /// BEST/2 shared memory (`SHARED_DATA` in the best crate) is process-wide, so
+    /// two simulated ECUs in one test process disturb each other. Sim tests take turns.
+    static SIM_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     fn set(items: &[(&str, ResultValue)]) -> ResultSet {
         let mut s = ResultSet::default();
@@ -622,6 +865,7 @@ mod tests {
             sim: Some(PathBuf::from(sim)),
             port: None,
         };
+        let _guard = SIM_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let handle = spawn(PathBuf::from(&dir), args);
         handle.tx.send(Command::Scan).unwrap();
 
@@ -639,5 +883,89 @@ mod tests {
         }
         let variant = motor.expect("d_motor not found");
         assert!(!variant.is_empty());
+    }
+
+    /// Same environment as above: engine preset of the sim diesel, polled live.
+    #[test]
+    fn worker_polls_engine_preset_in_sim() {
+        use crate::live::{self, as_number};
+
+        let (Ok(dir), Ok(sim)) = (
+            std::env::var("BMWA_ECU_DIR"),
+            std::env::var("BMWA_SIM_FILE"),
+        ) else {
+            eprintln!("skipped: set BMWA_ECU_DIR and BMWA_SIM_FILE");
+            return;
+        };
+        let args = Args {
+            ecu_dir: Some(PathBuf::from(&dir)),
+            sim: Some(PathBuf::from(sim)),
+            port: None,
+        };
+        let _guard = SIM_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let handle = spawn(PathBuf::from(&dir), args);
+        let wait = Duration::from_secs(60);
+
+        handle.tx.send(Command::Catalog("d_motor".into())).unwrap();
+        let catalog = loop {
+            match handle.rx.recv_timeout(wait).expect("worker timed out") {
+                Event::Catalog { group, catalog } if group == "d_motor" => {
+                    break catalog.expect("catalog");
+                }
+                _ => {}
+            }
+        };
+        let preset = live::preset_for("d_motor").unwrap();
+        let items = preset.resolve(&catalog, &Default::default());
+        assert!(items.len() >= 3, "engine preset matched {items:?}");
+
+        let jobs = live::group_jobs(&items);
+        handle
+            .tx
+            .send(Command::Live {
+                run: 7,
+                group: "d_motor".into(),
+                jobs,
+            })
+            .unwrap();
+        let mut seen = HashSet::new();
+        let mut rounds = 0;
+        while rounds < 2 {
+            match handle.rx.recv_timeout(wait).expect("worker timed out") {
+                Event::LiveValues {
+                    run,
+                    values,
+                    round_end,
+                    ..
+                } => {
+                    assert_eq!(run, 7);
+                    rounds += usize::from(round_end);
+                    for (job, result, v) in values {
+                        let k = live::key(&job, &result);
+                        if items.iter().any(|i| i.key() == k) && as_number(&v).is_some() {
+                            seen.insert(k);
+                        }
+                    }
+                }
+                // The sim has no recorded answer for the single-value jobs, e.g.
+                // STATUS_MOTORDREHZAHL. The block job must work.
+                Event::LiveError { job, message, .. } => {
+                    assert_ne!(job, "STATUS_MESSWERTBLOCK_LESEN", "{message}")
+                }
+                Event::LiveStopped { reason, .. } => panic!("stopped early: {reason:?}"),
+                _ => {}
+            }
+        }
+        assert!(seen.len() >= 3, "numeric values: {seen:?}");
+
+        handle.tx.send(Command::StopLive).unwrap();
+        loop {
+            if let Event::LiveStopped { run, reason } =
+                handle.rx.recv_timeout(wait).expect("worker timed out")
+            {
+                assert_eq!((run, reason), (7, None));
+                break;
+            }
+        }
     }
 }

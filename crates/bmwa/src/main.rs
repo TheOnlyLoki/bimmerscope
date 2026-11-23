@@ -5,6 +5,7 @@ mod cable;
 mod config;
 mod diag;
 mod index;
+mod live;
 mod modules;
 mod ui;
 
